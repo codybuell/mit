@@ -18,16 +18,15 @@
 # Licensing: GPL, http://www.gnu.org/copyleft/gpl.html
 #
 # Revisions: 2012.06.27 Framework roughed out.
-#            2012.06.18 Initial version completed.
+#            2012.06.28 Initial version completed.
+#            2012.06.29 Moved away from using DOY to prevent problems in
+#                       spanning years.
 #
 # Requisite: todo.sh by Gina Trapanni
 #
 # Resources: https://github.com/ginatrapani/todo.txt-cli/wiki
 # 
-# Task List: Use something better than DOY on calculations to prevent
-#             problems at year intesections/crossings.
-#
-#            Make your grep a bit more robust {YYYY.MM.DD} so you can
+# Task List: Make your grep a bit more robust {YYYY.MM.DD} so you can
 #             make an addon for events {YYYY.MM.DD HH:MM}.
 
 ####################
@@ -64,16 +63,6 @@ error() {
   echo "improper usage: $(basename $0) [-hv] [date|day task] [@context]"
 }
 
-makeDOY() {
-  # format YYYY.MM.DD to day of year
-  if [ $UNAME = "Darwin" ]; then
-    eval $1=`date -j -f "%Y.%m.%d" $2 +%j | sed 's/^00//;s/^0//'`
-  else
-    DAY=`echo $2 | sed 's/./\//g'`
-    eval $1=`date -d $DAY +%j | sed 's/^00//;s/^0//'`
-  fi
-}
-
 makeDOW() {
   # format YYYY.MM.DD to day of week
   if [ $UNAME = "Darwin" ]; then
@@ -100,6 +89,17 @@ parseDAY() {
   else
     MITDATE=`date -d +$1 +%Y.%m.%d`
   fi
+}
+
+getMITS() {
+  for (( i=0; i < ${#MITS[@]}; i++ )); do
+    MITDATE=`echo ${MITS[$i]} | awk '{print $1}' | sed 's/\.//g'`
+    MITTASK=`echo ${MITS[$i]} | awk '{$1 = ""; print}'`
+    if [ "$MITDATE" $1 "$2" ]; then
+    #if [ "$MITDATE" -eq "$DAY" ]; then
+      echo " $MITTASK"
+    fi
+  done
 }
 
 ############################
@@ -144,79 +144,49 @@ shift
 
   # make an array of ordered unique MIT dates
   DATES=(`grep "^{" $TODO_FILE | grep "$1" | sed -e 's/{//' -e 's/}//' | awk '{print $1}' | sort | uniq`)
-  TODAY=`date +%j | sed 's/^00//;s/^0//'`
+  TODAY=`date +%Y%m%d`
 
   # processing if there are no mits
   if [ "${#DATES[@]}" -eq "0" ]; then
-    echo ""
-    echo "There are no MITs"
-    echo ""
+    echo "No MITs found."
     exit
   fi
 
   # processing of past due mits
   PASTDUE="false"
   for day in ${DATES[@]}; do
-    makeDOY DOY $day
-    if [ "$DOY" -lt "$TODAY" ]; then
+    DAY=`echo $day | sed 's/\.//g'`
+    if [ "$DAY" -lt "$TODAY" ]; then
       PASTDUE="true"
     fi
   done
   if [ "$PASTDUE" = "true" ]; then
     echo "Past Due:"
-    for (( i=0; i < ${#MITS[@]}; i++ )); do
-      MITDATE=`echo ${MITS[$i]} | awk '{print $1}'`
-      MITTASK=`echo ${MITS[$i]} | awk '{$1 = ""; print}'`
-      makeDOY MITDOY $MITDATE
-      if [ "$MITDOY" -lt "$TODAY" ]; then
-        echo " $MITTASK"
-      fi
-    done
+    getMITS -lt $TODAY
     echo ""
   fi
 
   # processing of all other mits
   for day in ${DATES[@]}; do
 
-    makeDOY DOY $day
-    DAYSTO=$(( $DOY - $TODAY ))
+    DAY=`echo $day | sed 's/\.//g'`
+    DAYSTO=$(( $DAY - $TODAY ))
 
-    if [ "$DOY" -eq "$TODAY" ]; then
+    if [ "$DAY" -eq "$TODAY" ]; then
       echo "Today:"
-      for (( i=0; i < ${#MITS[@]}; i++ )); do
-        MITDATE=`echo ${MITS[$i]} | awk '{print $1}'`
-        MITTASK=`echo ${MITS[$i]} | awk '{$1 = ""; print}'`
-        makeDOY MITDOY $MITDATE
-        if [ "$MITDOY" -eq "$TODAY" ]; then
-          echo " $MITTASK"
-        fi
-      done
+      getMITS -eq $DAY
       echo ""
 
     elif [ "$DAYSTO" -gt "0" ] && [ "$DAYSTO" -lt "7" ]; then
       makeDOW DOW $day
       echo "$DOW:"
-      for (( i=0; i < ${#MITS[@]}; i++ )); do
-        MITDATE=`echo ${MITS[$i]} | awk '{print $1}'`
-        MITTASK=`echo ${MITS[$i]} | awk '{$1 = ""; print}'`
-        makeDOY MITDOY $MITDATE
-        if [ "$MITDOY" -eq "$DOY" ]; then
-          echo " $MITTASK"
-        fi
-      done
+      getMITS -eq $DAY
       echo ""
 
     elif [ "$DAYSTO" -ge "7" ]; then
       makeDATE DATE $day
       echo "$DATE:"
-      for (( i=0; i < ${#MITS[@]}; i++ )); do
-        MITDATE=`echo ${MITS[$i]} | awk '{print $1}'`
-        MITTASK=`echo ${MITS[$i]} | awk '{$1 = ""; print}'`
-        makeDOY MITDOY $MITDATE
-        if [ "$MITDOY" -eq "$DOY" ]; then
-          echo " $MITTASK"
-        fi
-      done
+      getMITS -eq $DAY
       echo ""
     fi
 
