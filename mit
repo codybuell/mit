@@ -1,0 +1,259 @@
+#!/bin/bash
+#
+# MIT
+#
+# Bash script to add funcitonality to todo.txt cli by Gina Trapani. Most
+# Important Tasks (MIT) are intended to be specific todo items associated
+# with a specific day. They differ from events in that they do not necessarily
+# have a specified time. As a best practice only 3 MITs should be scheduled
+# per day. This script is intended to parse the todo.txt file and generate a
+# schedule of MITs by day of the week if no arguments are given, or add new
+# MITs to the list.
+#
+# MITs are stored in the following format:
+#   {YYYY.MM.DD} mit task information
+#
+# Author(s): Cody Buell
+#
+# Licensing: GPL, http://www.gnu.org/copyleft/gpl.html
+#
+# Revisions: 2012.06.27 Framework roughed out.
+#            2012.06.18 Initial version completed.
+#
+# Requisite: todo.sh by Gina Trapanni
+#
+# Resources: https://github.com/ginatrapani/todo.txt-cli/wiki
+# 
+# Task List:
+
+####################
+# Helper Funcitons #
+####################
+
+usage() {
+  cat <<-ENDOFUSAGE
+
+	  Most Important Tasks (MIT):
+	    Displays from or adds Most Important Tasks (MIT) to todo.txt file.
+
+	    $(basename $0) [-hv] [date|day task] [@context]
+
+	    -h, --help      Displays help message.
+	    -v, --version   Displays version information.
+
+	    mit DATE|DAY task
+	      DATE must be in the format of YYYY.MM.DD.
+	      DAY can be full or short day names, today or tomorrow.
+
+	    mit @context
+	      Displays MITs for the specified context.
+
+	    mit wed upload code to github
+	      Creates a new MIT for next Wednesday unless the current day
+	      is Wednesday in which case it will be created for today.
+
+	ENDOFUSAGE
+  exit
+}
+
+error() {
+  echo "improper usage: $(basename $0) [-hv] [date|day task] [@context]"
+}
+
+makeDOY() {
+  # format YYYY.MM.DD to day of year
+  if [ $UNAME = "Darwin" ]; then
+    eval $1=`date -j -f "%Y.%m.%d" $2 +%j`
+  else
+    DAY=`echo $2 | sed 's/./\//g'`
+    eval $1=`date -d $DAY +%j`
+  fi
+}
+
+makeDOW() {
+  # format YYYY.MM.DD to day of week
+  if [ $UNAME = "Darwin" ]; then
+    eval $1=`date -j -f "%Y.%m.%d" $2 +%A`
+  else
+    DAY=`echo $2 | sed 's/./\//g'`
+    eval $1=`date -d $DAY +%A`
+  fi
+}
+
+makeDATE() {
+  # foramt YYYY.MM.DD to Day, Month DD
+  if [ $UNAME = "Darwin" ]; then
+    eval $1=`date -j -f "%Y.%m.%d" $2 "+%A', '%B' '%d"`
+  else
+    DAY=`echo $2 | sed 's/./\//g'`
+    eval $1=`date -d $DAY "+%A', '%B' '%d"`
+  fi
+}
+
+parseDAY() {
+  if [ $UNAME = "Darwin" ]; then
+    MITDATE=`date -v +$1 +%Y.%m.%d`
+  else
+    MITDATE=`date -d +$1 +%Y.%m.%d`
+  fi
+}
+
+############################
+# Establish Some Variables #
+############################
+
+UNAME=`uname`
+ACTION=$1
+VERSION="1.0"
+shift
+
+##########
+# Run It #
+##########
+
+# USAGE AND HELP
+
+[ "$ACTION" = "usage" ] || [ x"$1" = x"-h" ] || [ x"$1" = x"--help" ] && {
+  usage
+}
+
+# VERSION INFORMATION
+
+[ x"$1" = x"-v" ] || [ x"$1" = x"--version" ] && {
+  echo "mit verion $VERSION"
+  exit
+}
+
+# DISPLAY MITS
+
+[ -z $1 ] || [[ $1 =~ @.* ]] && {
+
+  # define array element separator as newlines
+  OLDIFS=$IFS
+  IFS=$'\n'
+
+  # pull out MITs from the todo file, clean and sort
+  MITS=(`grep -n "^{" $TODO_FILE | grep "$1" | sed -e 's/{//' -e 's/}//' -e 's/:/ /' | awk '{s=$1;e=$NF;$1="";$NF=e" ("s")"}1' | sort`)
+
+  # return array element separator to spaces
+  IFS=$OLDIFS
+
+  # make an array of ordered unique MIT dates
+  DATES=(`grep "^{" $TODO_FILE | grep "$1" | sed -e 's/{//' -e 's/}//' | awk '{print $1}' | sort | uniq`)
+  TODAY=`date +%j`
+
+  # processing if there are no mits
+  if [ "${#DATES[@]}" -eq "0" ]; then
+    echo ""
+    echo "There are no MITs"
+    echo ""
+    exit
+  fi
+
+  # processing of past due mits
+  PASTDUE="false"
+  for day in ${DATES[@]}; do
+    makeDOY DOY $day
+    if [ "$DOY" -lt "$TODAY" ]; then
+      PASTDUE="true"
+    fi
+  done
+  if [ "$PASTDUE" = "true" ]; then
+    echo "Past Due:"
+    for (( i=0; i < ${#MITS[@]}; i++ )); do
+      MITDATE=`echo ${MITS[$i]} | awk '{print $1}'`
+      MITTASK=`echo ${MITS[$i]} | awk '{$1 = ""; print}'`
+      makeDOY MITDOY $MITDATE
+      if [ "$MITDOY" -lt "$TODAY" ]; then
+        echo " $MITTASK"
+      fi
+    done
+    echo ""
+  fi
+
+  # processing of all other mits
+  for day in ${DATES[@]}; do
+
+    makeDOY DOY $day
+    DAYSTO=$(( $DOY - $TODAY ))
+
+    if [ "$DOY" -eq "$TODAY" ]; then
+      echo "Today:"
+      for (( i=0; i < ${#MITS[@]}; i++ )); do
+        MITDATE=`echo ${MITS[$i]} | awk '{print $1}'`
+        MITTASK=`echo ${MITS[$i]} | awk '{$1 = ""; print}'`
+        makeDOY MITDOY $MITDATE
+        if [ "$MITDOY" -eq "$TODAY" ]; then
+          echo " $MITTASK"
+        fi
+      done
+      echo ""
+
+    elif [ "$DAYSTO" -gt "0" ] && [ "$DAYSTO" -lt "7" ]; then
+      makeDOW DOW $day
+      echo "$DOW:"
+      for (( i=0; i < ${#MITS[@]}; i++ )); do
+        MITDATE=`echo ${MITS[$i]} | awk '{print $1}'`
+        MITTASK=`echo ${MITS[$i]} | awk '{$1 = ""; print}'`
+        makeDOY MITDOY $MITDATE
+        if [ "$MITDOY" -eq "$DOY" ]; then
+          echo " $MITTASK"
+        fi
+      done
+      echo ""
+
+    elif [ "$DAYSTO" -ge "7" ]; then
+      makeDATE DATE $day
+      echo "$DATE:"
+      for (( i=0; i < ${#MITS[@]}; i++ )); do
+        MITDATE=`echo ${MITS[$i]} | awk '{print $1}'`
+        MITTASK=`echo ${MITS[$i]} | awk '{$1 = ""; print}'`
+        makeDOY MITDOY $MITDATE
+        if [ "$MITDOY" -eq "$DOY" ]; then
+          echo " $MITTASK"
+        fi
+      done
+      echo ""
+    fi
+
+  done
+  exit
+
+}
+
+# ADD NEW MITS
+
+[ -n "$1" ] && {
+
+  MITDATE=`echo $1 | tr [A-Z] [a-z]`
+  shift
+  MITTASK=$@
+  TODAY=`date +%u`
+
+  case $MITDATE in
+    today )
+      NEWMIT="{`date +%Y.%m.%d`} $MITTASK"
+      ;;
+    tomorrow )
+      parseDAY 1d
+      NEWMIT="{$MITDATE} $MITTASK"
+      ;;
+    monday|mon|tuesday|tue|wednesday|wed|thursday|thu|friday|fri|saturday|sat|sunday|sun )
+      parseDAY $MITDATE
+      NEWMIT="{$MITDATE} $MITTASK"
+      ;;
+    [0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9] )
+      NEWMIT="{$MITDATE} $MITTASK"
+      ;;
+    * )
+      error
+      exit
+      ;;
+  esac
+
+  $TODO_FULL_SH add $NEWMIT
+
+  exit
+  
+}
+
