@@ -42,3 +42,18 @@ Format
 MITs are stored directly in the todo.txt file with the following format:
 
     {YYYY.MM.DD} task information @context
+
+MITs are displayed as follows:
+
+    Past Due:                             # all past due items displayed here
+      mow the lawn @home (13)             # task numbers displayed on the end
+
+    Today:
+      change oil in car (23)
+      prepare tps report @work (15)
+
+    Wednesday:
+      buy groceries @shopping (28)
+
+    Monday, December 17:                  # anyting a week out or more gets a date
+      call mother (30)
