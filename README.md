@@ -25,11 +25,13 @@ Usage
 The mit addon can be used to both view and add MITs.
 
 To add mits:
+
     todo.sh mit [DATE|DAY] [task]
 
 A date or day is required along with the task.  Dates must be in the format of YYYY.MM.DD.  Days can be days of the week (Monday, Tuesday, etc.), or abbreviated days of the week (Mon, Tue, etc.).  "Today" or "Tomorrow" are also accepted.
 
 To view mits:
+
     todo.sh mit [@context]
 
 Specifying a context is optional but can be helpful if you define MITs for multiple contexts.
@@ -38,4 +40,5 @@ Format
 ------
 
 MITs are stored directly in the todo.txt file with the following format:
+
     {YYYY.MM.DD} task information @context
