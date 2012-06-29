@@ -26,6 +26,9 @@
 # 
 # Task List: Use something better than DOY on calculations to prevent
 #             problems at year intesections/crossings.
+#
+#            Make your grep a bit more robust {YYYY.MM.DD} so you can
+#             make an addon for events {YYYY.MM.DD HH:MM}.
 
 ####################
 # Helper Funcitons #
