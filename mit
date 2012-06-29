@@ -24,7 +24,8 @@
 #
 # Resources: https://github.com/ginatrapani/todo.txt-cli/wiki
 # 
-# Task List:
+# Task List: Use something better than DOY on calculations to prevent
+#             problems at year intesections/crossings.
 
 ####################
 # Helper Funcitons #
@@ -63,10 +64,10 @@ error() {
 makeDOY() {
   # format YYYY.MM.DD to day of year
   if [ $UNAME = "Darwin" ]; then
-    eval $1=`date -j -f "%Y.%m.%d" $2 +%j`
+    eval $1=`date -j -f "%Y.%m.%d" $2 +%j | sed 's/^00//;s/^0//'`
   else
     DAY=`echo $2 | sed 's/./\//g'`
-    eval $1=`date -d $DAY +%j`
+    eval $1=`date -d $DAY +%j | sed 's/^00//;s/^0//'`
   fi
 }
 
@@ -140,7 +141,7 @@ shift
 
   # make an array of ordered unique MIT dates
   DATES=(`grep "^{" $TODO_FILE | grep "$1" | sed -e 's/{//' -e 's/}//' | awk '{print $1}' | sort | uniq`)
-  TODAY=`date +%j`
+  TODAY=`date +%j | sed 's/^00//;s/^0//'`
 
   # processing if there are no mits
   if [ "${#DATES[@]}" -eq "0" ]; then
@@ -256,4 +257,3 @@ shift
   exit
   
 }
-

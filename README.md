@@ -14,7 +14,7 @@ MIT adds functionality to Gina Trapani's [todo.txt-cli](https://github.com/ginat
 Installation
 ------------
 
-1. Install and configure todo.txt-cli
+1. Install and configure [todo.txt-cli](https://github.com/ginatrapani/todo.txt-cli).
 2. Ensure TODO_ACTIONS_DIR is defined in todo.cfg or in your profile.
 3. Place mit in your actions directory.
 4. Ensure mit is executable.
@@ -34,7 +34,7 @@ To view mits:
 
     todo.sh mit [@context]
 
-Specifying a context is optional but can be helpful if you define MITs for multiple contexts.
+Specifying a context is optional but can be helpful if you define MITs for multiple contexts.  MITs will be grouped by day with any old incomplete MITs listed under "Past Due:".
 
 Format
 ------
