@@ -21,6 +21,7 @@
 #            2012.06.28 Initial version completed.
 #            2012.06.29 Moved away from using DOY to prevent problems in
 #                       spanning years.
+#            2012.07.01 Added ability to move MITs.
 #
 # Requisite: todo.sh by Gina Trapanni
 #
@@ -39,7 +40,7 @@ usage() {
 	  Most Important Tasks (MIT):
 	    Displays from or adds Most Important Tasks (MIT) to todo.txt file.
 
-	    $(basename $0) [-hv] [date|day task] [@context]
+	    $(basename $0) [-hv] [date|day task] [@context] [mv ID DATE|DAY]
 
 	    -h, --help      Displays help message.
 	    -v, --version   Displays version information.
@@ -51,6 +52,11 @@ usage() {
 	    mit @context
 	      Displays MITs for the specified context.
 
+	    mit mv ID DATE|DAY
+	      Move the MIT identified by ID to a new day.
+	      DATE must be in the format of YYYY.MM.DD.
+	      DAY can be full or short day names, today or tomorrow.
+
 	    mit wed upload code to github
 	      Creates a new MIT for next Wednesday unless the current day
 	      is Wednesday in which case it will be created for today.
@@ -60,7 +66,8 @@ usage() {
 }
 
 error() {
-  echo "improper usage: $(basename $0) [-hv] [date|day task] [@context]"
+  echo "error: $1"
+  echo "usage: $(basename $0) [-hv] [date|day task] [@context] [mv ID DATE|DAY]"
 }
 
 makeDOW() {
@@ -125,6 +132,49 @@ shift
 
 [ x"$1" = x"-v" ] || [ x"$1" = x"--version" ] && {
   echo "mit verion $VERSION"
+  exit
+}
+
+# MOVE MITS
+
+[ x"$1" = x"mv" ] && {
+  # check that second argument is an id and a valid one
+  if [[ $2 =~ ^[0-9]+$ ]]; then
+    MITTASK=`awk -v ID=$2 'NR==ID {$1=""; sub(/^ /, ""); print "\x27"$0"\x27"}' $TODO_FILE`
+    case $3 in
+      today )
+        MITDATE="`date +%Y.%m.%d`"
+        sed -i '' "$2 s/{[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}}/{$MITDATE}/" $TODO_FILE
+        echo "TODO: MIT $MITTASK moved to today."
+        exit
+        ;;
+      tomorrow )
+        parseDAY 1d
+        sed -i '' "$2 s/{[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}}/{$MITDATE}/" $TODO_FILE
+        echo "TODO: MIT $MITTASK moved to tomorrow."
+        exit
+        ;;
+      monday|mon|tuesday|tue|wednesday|wed|thursday|thu|friday|fri|saturday|sat|sunday|sun )
+        parseDAY $3
+        makeDOW DOW $MITDATE
+        sed -i '' "$2 s/{[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}}/{$MITDATE}/" $TODO_FILE
+        echo "TODO: MIT $MITTASK moved to $DOW."
+        exit
+        ;;
+      [0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9] )
+        makeDATE DATE $3
+        sed -i '' "$2 s/{[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}}/{$3}/" $TODO_FILE
+        echo "TODO: MIT $MITTASK moved to $DATE."
+        exit
+        ;;
+      * )
+        error "invalid date"
+        exit
+        ;;
+    esac
+  fi
+
+  error "invalid task id"
   exit
 }
 
@@ -220,7 +270,7 @@ shift
       NEWMIT="{$MITDATE} $MITTASK"
       ;;
     * )
-      error
+      error "invalid date"
       exit
       ;;
   esac
