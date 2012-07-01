@@ -36,6 +36,12 @@ To view mits:
 
 Specifying a context is optional but can be helpful if you define MITs for multiple contexts.  MITs will be grouped by day with any old incomplete MITs listed under "Past Due:".
 
+To move mits:
+
+    todo.sh mit mv [ID] [DATE|DAY]
+
+As with adding mits dates must be in the format of YYYY.MM.DD, day names are accepted, or you can specify "Today" or "Tomorrow".
+
 Format
 ------
 
