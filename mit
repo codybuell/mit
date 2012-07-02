@@ -22,13 +22,15 @@
 #            2012.06.29 Moved away from using DOY to prevent problems in
 #                       spanning years.
 #            2012.07.01 Added ability to move MITs.
+#            2012.07.02 Made greps a bit more robust.
 #
 # Requisite: todo.sh by Gina Trapanni
 #
 # Resources: https://github.com/ginatrapani/todo.txt-cli/wiki
 # 
-# Task List: Make your grep a bit more robust {YYYY.MM.DD} so you can
-#             make an addon for events {YYYY.MM.DD HH:MM}.
+# Task List: Add extra check on mit mv to see that it is an MIT being moved.
+#            Add ability to add a time {YYYY.MM.DD HH:MMam/pm}
+#             t mit today@10pm go to work @nasa
 
 ####################
 # Helper Funcitons #
@@ -187,13 +189,13 @@ shift
   IFS=$'\n'
 
   # pull out MITs from the todo file, clean and sort
-  MITS=(`grep -n "^{" $TODO_FILE | grep "$1" | sed -e 's/{//' -e 's/}//' -e 's/:/ /' | awk '{s=$1;e=$NF;$1="";$NF=e" ("s")"}1' | sort`)
+  MITS=(`grep -n "^{[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}" $TODO_FILE | grep "$1" | sed -e 's/{//' -e 's/}//' -e 's/:/ /' | awk '{s=$1;e=$NF;$1="";$NF=e" ("s")"}1' | sort`)
 
   # return array element separator to spaces
   IFS=$OLDIFS
 
   # make an array of ordered unique MIT dates
-  DATES=(`grep "^{" $TODO_FILE | grep "$1" | sed -e 's/{//' -e 's/}//' | awk '{print $1}' | sort | uniq`)
+  DATES=(`grep "^{[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}" $TODO_FILE | grep "$1" | sed -e 's/{//' -e 's/}//' | awk '{print $1}' | sort | uniq`)
   TODAY=`date +%Y%m%d`
 
   # processing if there are no mits
