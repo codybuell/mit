@@ -23,6 +23,7 @@
 #                       spanning years.
 #            2012.07.01 Added ability to move MITs.
 #            2012.07.02 Made greps a bit more robust.
+#            2012.07.13 Added ability to invert context listings.
 #
 # Requisite: todo.sh by Gina Trapanni
 #
@@ -42,7 +43,7 @@ usage() {
 	  Most Important Tasks (MIT):
 	    Displays from or adds Most Important Tasks (MIT) to todo.txt file.
 
-	    $(basename $0) [-hv] [date|day task] [@context] [mv ID DATE|DAY]
+	    $(basename $0) [-hv] [date|day task] [not @context|@context] [mv ID DATE|DAY]
 
 	    -h, --help      Displays help message.
 	    -v, --version   Displays version information.
@@ -51,8 +52,8 @@ usage() {
 	      DATE must be in the format of YYYY.MM.DD.
 	      DAY can be full or short day names, today or tomorrow.
 
-	    mit @context
-	      Displays MITs for the specified context.
+	    mit not @context|@context
+	      Displays all MIT's not in or in specified context.
 
 	    mit mv ID DATE|DAY
 	      Move the MIT identified by ID to a new day.
@@ -69,7 +70,7 @@ usage() {
 
 error() {
   echo "error: $1"
-  echo "usage: $(basename $0) [-hv] [date|day task] [@context] [mv ID DATE|DAY]"
+  echo "usage: $(basename $0) [-hv] [date|day task] [not @context|@context] [mv ID DATE|DAY]"
 }
 
 makeDOW() {
@@ -182,20 +183,28 @@ shift
 
 # DISPLAY MITS
 
-[ -z $1 ] || [[ $1 =~ @.* ]] && {
+[ -z $1 ] || [[ $1 =~ @.* ]] || [ "$1" = "not" ] && {
 
   # define array element separator as newlines
   OLDIFS=$IFS
   IFS=$'\n'
 
+  # invert search if not is specified before context
+  if [ "$1" = "not" ]; then
+    shift
+    FLAG="-v"
+  else
+    FLAG=""
+  fi
+
   # pull out MITs from the todo file, clean and sort
-  MITS=(`grep -n "^{[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}" $TODO_FILE | grep "$1" | sed -e 's/{//' -e 's/}//' -e 's/:/ /' | awk '{s=$1;e=$NF;$1="";$NF=e" ("s")"}1' | sort`)
+  MITS=(`grep -n "^{[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}" $TODO_FILE | grep $FLAG "$1" | sed -e 's/{//' -e 's/}//' -e 's/:/ /' | awk '{s=$1;e=$NF;$1="";$NF=e" ("s")"}1' | sort`)
 
   # return array element separator to spaces
   IFS=$OLDIFS
 
   # make an array of ordered unique MIT dates
-  DATES=(`grep "^{[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}" $TODO_FILE | grep "$1" | sed -e 's/{//' -e 's/}//' | awk '{print $1}' | sort | uniq`)
+  DATES=(`grep "^{[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}" $TODO_FILE | grep $FLAG "$1" | sed -e 's/{//' -e 's/}//' | awk '{print $1}' | sort | uniq`)
   TODAY=`date +%Y%m%d`
 
   # processing if there are no mits
