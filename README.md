@@ -32,9 +32,9 @@ A date or day is required along with the task.  Dates must be in the format of Y
 
 To view mits:
 
-    todo.sh mit [@context]
+    todo.sh mit [not @context|@context]
 
-Specifying a context is optional but can be helpful if you define MITs for multiple contexts.  MITs will be grouped by day with any old incomplete MITs listed under "Past Due:".
+Specifying a context to filter by is optional but can be helpful if you define MITs for multiple contexts.  MITs will be grouped by day with any old incomplete MITs listed under "Past Due:".
 
 To move mits:
 
