@@ -29,7 +29,7 @@
 # Requisite: todo.sh by Gina Trapanni
 #
 # Resources: https://github.com/ginatrapani/todo.txt-cli/wiki
-# 
+#
 # Task List: Add extra check on mit mv to see that it is an MIT being moved.
 #            Add ability to add a time {YYYY.MM.DD HH:MMam/pm}
 #             t mit today@10pm go to work @nasa
@@ -79,7 +79,7 @@ makeDOW() {
   if [ $UNAME = "Darwin" ]; then
     eval $1=`date -j -f "%Y.%m.%d" $2 +%A`
   else
-    DAY=`echo $2 | sed 's/./\//g'`
+    local DAY=`echo $2 | sed 's/\./\//g'`
     eval $1=`date -d $DAY +%A`
   fi
 }
@@ -89,7 +89,7 @@ makeDATE() {
   if [ $UNAME = "Darwin" ]; then
     eval $1=`date -j -f "%Y.%m.%d" $2 "+%A', '%B' '%d"`
   else
-    DAY=`echo $2 | sed 's/./\//g'`
+    local DAY=`echo $2 | sed 's/\./\//g'`
     eval $1=`date -d $DAY "+%A', '%B' '%d"`
   fi
 }
@@ -98,7 +98,11 @@ parseDAY() {
   if [ $UNAME = "Darwin" ]; then
     MITDATE=`date -v +$1 +%Y.%m.%d`
   else
-    MITDATE=`date -d +$1 +%Y.%m.%d`
+	  local dayid=$1
+	  if [ $dayid = "1d" ]; then
+		  dayid="1day"
+	  fi
+    MITDATE=`date -d +$dayid +%Y.%m.%d`
   fi
 }
 
@@ -290,5 +294,5 @@ shift
   $TODO_FULL_SH add $NEWMIT
 
   exit
-  
+
 }
