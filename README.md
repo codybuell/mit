@@ -40,7 +40,13 @@ To move mits:
 
     todo.sh mit mv [ID] [DATE|DAY]
 
-As with adding mits dates must be in the format of YYYY.MM.DD, day names are accepted, or you can specify "Today" or "Tomorrow".
+As with adding mits dates must be in the format of YYYY.MM.DD, day names are accepted, or you can specify "Today" or "Tomorrow".  Thanks to [rcraggs](https://github.com/rcraggs) you can now convert non-mit tasks to mits with the move command as well, the usage is the same.
+
+To convert mits to normal tasks:
+
+    todo.sh mit rm [ID]
+
+  Another bit of functionality provided by [rcraggs](https://github.com/rcraggs) that allows you to convert a mit to a normal task.
 
 Format
 ------
