@@ -155,12 +155,27 @@ shift                                   # shift arguments
   exit
 }
 
+# REMOVE MIT
+[ x"$1" = x"rm" ] && {
+  sed -i '' "$2 s/{[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}}[ ]*//" $TODO_FILE
+  echo "Removed MIT from task $2"
+  exit;
+}
+
 # MOVE MITS
 
 [ x"$1" = x"mv" ] && {
   # check that second argument is an id and a valid one
   if [[ $2 =~ ^[0-9]+$ ]]; then
     MITTASK=`awk -v ID=$2 'NR==ID {$1=""; sub(/^ /, ""); print "\x27"$0"\x27"}' $TODO_FILE`
+
+    TASK=`awk -v ID=$2 'NR==ID {print "\x27"$0"\x27"}' $TODO_FILE`
+    # Add a date to this item if there is none so that we can move it.
+    if [[ ! $TASK =~ \{[0-9]{4}\.[0-9]{2}\.[0-9]{2}\} ]]; then
+        TODAY="`date +%Y.%m.%d`"
+        sed -i '' "$2 s/^/{$TODAY} /" $TODO_FILE
+    fi
+
     case $3 in
       today )
         MITDATE="`date +%Y.%m.%d`"
