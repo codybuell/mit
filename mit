@@ -26,14 +26,22 @@
 #            2012.07.13 Added ability to invert context listings.
 #            2012.09.22 Modified greps and seds to handle MITs with priorities.
 #            2012.10.29 Merged corrections from 00Davo regarding #2.
+#            2012.10.31 Added BSD vs GNU date detection.
+#            2013.01.16 Merged enhancements from rcraggs, adding ability to move
+#                       non-mit tasks into a mit and vise versa.  Incremented
+#                       version number from 1.1 to 1.2.  Setup core functions,
+#                       added short options section and re-arranged accordingly.
 #
 # Requisite: todo.sh by Gina Trapanni
 #
 # Resources: https://github.com/ginatrapani/todo.txt-cli/wiki
 #
-# Task List: Add extra check on mit mv to see that it is an MIT being moved.
-#            Add ability to add a time {YYYY.MM.DD HH:MMam/pm}
-#             t mit today@10pm go to work @nasa
+# Task List: - Add extra check on mit mv to see that it is an MIT being moved.
+#            - Add ability to add a time {YYYY.MM.DD HH:MMam/pm}
+#                t mit today@10pm go to work @nasa
+#            - Fix mv function so that when a task is converted to a mit, the
+#                whole task name is displayed in the results.  Currently it
+#                snips out the first word.
 
 ###################
 # Usage Functions #
@@ -45,7 +53,8 @@ usage() {
 	  Most Important Tasks (MIT):
 	    Displays from or adds Most Important Tasks (MIT) to todo.txt file.
 
-	    $(basename $0) [-hv] [date|day task] [not @context|@context] [mv ID DATE|DAY]
+	    $(basename $0) [-h|--help] [-v|--version] [date|day task] [rm ID]
+	        [not @context|@context] [mv ID DATE|DAY]
 
 	    -h, --help      Displays help message.
 	    -v, --version   Displays version information.
@@ -53,6 +62,9 @@ usage() {
 	    mit DATE|DAY task
 	      DATE must be in the format of YYYY.MM.DD.
 	      DAY can be full or short day names, today or tomorrow.
+
+	    mit rm ID
+	      Convert the MIT identified by ID to a standard task.
 
 	    mit not @context|@context
 	      Displays all MIT's not in or in specified context.
@@ -73,6 +85,10 @@ usage() {
 error() {
   echo "error: $1"
   echo "usage: $(basename $0) [-hv] [date|day task] [not @context|@context] [mv ID DATE|DAY]"
+}
+
+version() {
+  echo "mit version $VERSION"
 }
 
 ####################
@@ -123,6 +139,64 @@ getMITS() {
   done
 }
 
+##################
+# Core Functions #
+##################
+
+moveMIT() {
+  # check that second argument is an id and a valid one
+  if [[ $1 =~ ^[0-9]+$ ]]; then
+    MITTASK=`awk -v ID=$1 'NR==ID {$1=""; sub(/^ /, ""); print "\x27"$0"\x27"}' $TODO_FILE`
+
+    TASK=`awk -v ID=$1 'NR==ID {print "\x27"$0"\x27"}' $TODO_FILE`
+    # Add a date to this item if there is none so that we can move it.
+    if [[ ! $TASK =~ \{[0-9]{4}\.[0-9]{2}\.[0-9]{2}\} ]]; then
+        TODAY="`date +%Y.%m.%d`"
+        sed -i '' "$1 s/^/{$TODAY} /" $TODO_FILE
+    fi
+
+    case $2 in
+      today )
+        MITDATE="`date +%Y.%m.%d`"
+        sed -i '' "$1 s/{[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}}/{$MITDATE}/" $TODO_FILE
+        echo "TODO: MIT $MITTASK moved to today."
+        exit
+        ;;  
+      tomorrow )
+        parseDAY 1d
+        sed -i '' "$1 s/{[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}}/{$MITDATE}/" $TODO_FILE
+        echo "TODO: MIT $MITTASK moved to tomorrow."
+        exit
+        ;;  
+      monday|mon|tuesday|tue|wednesday|wed|thursday|thu|friday|fri|saturday|sat|sunday|sun )
+        parseDAY $2
+        makeDOW DOW $MITDATE
+        sed -i '' "$1 s/{[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}}/{$MITDATE}/" $TODO_FILE
+        echo "TODO: MIT $MITTASK moved to $DOW."
+        exit
+        ;;  
+      [0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9] )
+        makeDATE DATE $2
+        sed -i '' "$1 s/{[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}}/{$2}/" $TODO_FILE
+        echo "TODO: MIT $MITTASK moved to $DATE."
+        exit
+        ;;  
+      * ) 
+        error "invalid date"
+        exit
+        ;;  
+    esac
+  else
+    error "invalid task id"
+    exit
+  fi
+}
+
+removeMIT() {
+  sed -i '' "$1 s/{[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}}[ ]*//" $TODO_FILE
+  echo "Removed MIT from task $1"
+}
+
 #######################
 # Establish Variables #
 #######################
@@ -133,85 +207,62 @@ else                                    # if it isn't bsd then...
   DVER="GNU"                            # set as gnu date
 fi
 
-VERSION="1.1"                           # mit version number
+VERSION="1.2"                           # mit version number
 ACTION=$1                               # set first argument to action
 
 shift                                   # shift arguments
 
+################
+# Long Options #
+################
+
+# display usage
+[ "$ACTION" = "usage" ] || [ x"$1" = x"--help" ] && {
+  usage
+  exit
+}
+
+# display version
+[ x"$1" = x"--version" ] && {
+  version
+  exit
+}
+
+# move mit
+[ x"$1" = x"mv" ] && {
+  moveMIT $2 $3
+}
+
+# remove mit
+[ x"$1" = x"rm" ] && {
+  removeMIT $2
+  exit
+}
+
+#################
+# Short Options #
+#################
+
+while getopts ":hv" Option; do
+  case $Option in
+    h ) 
+      usage
+      exit
+      ;;  
+    v ) 
+      version
+      exit
+      ;;  
+    : ) 
+      echo "Option -$OPTARG requires an argument." >&2
+      exit
+      ;;
+  esac
+done
+
 ##########
 # Run It #
 ##########
-
-# USAGE AND HELP
-
-[ "$ACTION" = "usage" ] || [ x"$1" = x"-h" ] || [ x"$1" = x"--help" ] && {
-  usage
-}
-
-# VERSION INFORMATION
-
-[ x"$1" = x"-v" ] || [ x"$1" = x"--version" ] && {
-  echo "mit verion $VERSION"
-  exit
-}
-
-# REMOVE MIT
-[ x"$1" = x"rm" ] && {
-  sed -i '' "$2 s/{[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}}[ ]*//" $TODO_FILE
-  echo "Removed MIT from task $2"
-  exit;
-}
-
-# MOVE MITS
-
-[ x"$1" = x"mv" ] && {
-  # check that second argument is an id and a valid one
-  if [[ $2 =~ ^[0-9]+$ ]]; then
-    MITTASK=`awk -v ID=$2 'NR==ID {$1=""; sub(/^ /, ""); print "\x27"$0"\x27"}' $TODO_FILE`
-
-    TASK=`awk -v ID=$2 'NR==ID {print "\x27"$0"\x27"}' $TODO_FILE`
-    # Add a date to this item if there is none so that we can move it.
-    if [[ ! $TASK =~ \{[0-9]{4}\.[0-9]{2}\.[0-9]{2}\} ]]; then
-        TODAY="`date +%Y.%m.%d`"
-        sed -i '' "$2 s/^/{$TODAY} /" $TODO_FILE
-    fi
-
-    case $3 in
-      today )
-        MITDATE="`date +%Y.%m.%d`"
-        sed -i '' "$2 s/{[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}}/{$MITDATE}/" $TODO_FILE
-        echo "TODO: MIT $MITTASK moved to today."
-        exit
-        ;;
-      tomorrow )
-        parseDAY 1d
-        sed -i '' "$2 s/{[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}}/{$MITDATE}/" $TODO_FILE
-        echo "TODO: MIT $MITTASK moved to tomorrow."
-        exit
-        ;;
-      monday|mon|tuesday|tue|wednesday|wed|thursday|thu|friday|fri|saturday|sat|sunday|sun )
-        parseDAY $3
-        makeDOW DOW $MITDATE
-        sed -i '' "$2 s/{[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}}/{$MITDATE}/" $TODO_FILE
-        echo "TODO: MIT $MITTASK moved to $DOW."
-        exit
-        ;;
-      [0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9] )
-        makeDATE DATE $3
-        sed -i '' "$2 s/{[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}}/{$3}/" $TODO_FILE
-        echo "TODO: MIT $MITTASK moved to $DATE."
-        exit
-        ;;
-      * )
-        error "invalid date"
-        exit
-        ;;
-    esac
-  fi
-
-  error "invalid task id"
-  exit
-}
 
 # DISPLAY MITS
 
