@@ -31,6 +31,8 @@
 #                       non-mit tasks into a mit and vise versa.  Incremented
 #                       version number from 1.1 to 1.2.  Setup core functions,
 #                       added short options section and re-arranged accordingly.
+#            2013.03.10 Added support for dated tasks per Justin Le's request.
+#                       Incremented version number from 1.2 to 1.3.
 #
 # Requisite: todo.sh by Gina Trapanni
 #
@@ -151,8 +153,20 @@ moveMIT() {
     TASK=`awk -v ID=$1 'NR==ID {print "\x27"$0"\x27"}' $TODO_FILE`
     # Add a date to this item if there is none so that we can move it.
     if [[ ! $TASK =~ \{[0-9]{4}\.[0-9]{2}\.[0-9]{2}\} ]]; then
-        TODAY="`date +%Y.%m.%d`"
+      TODAY="`date +%Y.%m.%d`"
+      FIRST_PART=`awk '{print $1"\x27"}' <<< $TASK`
+      SECOND_PART=`awk '{print "\x27"$2"\x27"}' <<< $TASK`
+      if [[ $FIRST_PART =~ ([A-Z]) ]]; then
+        if [[ $SECOND_PART =~ [0-9]{4}-[0-9]{2}-[0-9]{2} ]]; then
+          sed -i '' "$1 s/\(^([A-Z]\{1\}) [0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\} \)\(.*$\)/\1{$TODAY} \2/" $TODO_FILE
+        else
+          sed -i '' "$1 s/\(^([A-Z]\{1\}) \)\(.*$\)/\1{$TODAY} \2/" $TODO_FILE
+        fi
+      elif [[ $FIRST_PART =~ [0-9]{4}-[0-9]{2}-[0-9]{2} ]]; then
+        sed -i '' "$1 s/\(^[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\} \)\(.*$\)/\1{$TODAY} \2/" $TODO_FILE
+      else
         sed -i '' "$1 s/^/{$TODAY} /" $TODO_FILE
+      fi
     fi
 
     case $2 in
@@ -207,7 +221,7 @@ else                                    # if it isn't bsd then...
   DVER="GNU"                            # set as gnu date
 fi
 
-VERSION="1.2"                           # mit version number
+VERSION="1.3"                           # mit version number
 ACTION=$1                               # set first argument to action
 
 shift                                   # shift arguments
@@ -281,13 +295,20 @@ done
   fi
 
   # pull out MITs from the todo file, clean and sort
-  MITS=(`grep -n "^([A-Z]\{1\}) {[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}\|^{[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}" $TODO_FILE | grep $FLAG "$1" | sed -e 's/{//' -e 's/}//' -e 's/:/ /' -e 's/\(^[0-9].* \)\(([A-Z]) \)\([0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\} \)\(.*\)/\1\3\2\4/' | awk '{s=$1;e=$NF;$1="";$NF=e" ("s")"}1' | sort`)
+  # grepping for "X {YYYY.MM.DD}", "{YYYY.MM.DD}", "X YYYY-MM-DD {YYYY.MM.DD}" or "YYYY-MM-DD {YYYY.MM.DD}"
+  NUM='[0-9].* '
+  PRI='([A-Z]\{1\}) '
+  ADD='[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\} '
+  MDD='{[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}}'
+  # creat an array with values like YYYY.MM.DD [priority] [task info] [task number]
+  MITS=(`grep -n "^$PRI$MDD\|^$MDD\|^$PRI$ADD$MDD\|^$ADD$MDD" $TODO_FILE | grep $FLAG "$1" | sed "s/:/ /;s/\(^$NUM\)\($PRI\)\($ADD\)\(.*$\)/\1\2\4/;s/\(^$NUM\)\($ADD\)\(.*$\)/\1\3/;s/\(^$NUM\)\($PRI\)\($MDD \)\(.*\)/\1\3\2\4/;s/{//;s/}//" | awk '{s=$1;e=$NF;$1="";$NF=e" ("s")"}1' | sort`)
 
   # return array element separator to spaces
   IFS=$OLDIFS
 
   # make an array of ordered unique MIT dates
-  DATES=(`grep "^([A-Z]\{1\}) {[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}\|^{[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}" $TODO_FILE | grep $FLAG "$1" | sed -e 's/{//' -e 's/}//' -e 's/([A-Z]\{1\})//' | awk '{print $1}' | sort | uniq`)
+  DATES=(`grep "^$PRI$MDD\|^$MDD\|^$PRI$ADD$MDD\|^$ADD$MDD" $TODO_FILE | grep $FLAG "$1" | sed 's/^.*{\([0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}\).*$/\1/' | sort | uniq`)
+  #DATES=(`grep "^$PRI$MDD\|^$MDD\|^$PRI$ADD$MDD\|^$ADD$MDD" $TODO_FILE | grep $FLAG "$1" | sed -e 's/{//' -e 's/}//' -e 's/([A-Z]\{1\})//' | awk '{print $1}' | sort | uniq`)
   TODAY=`date +%Y%m%d`
 
   # processing if there are no mits
