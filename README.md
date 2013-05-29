@@ -24,7 +24,7 @@ Usage
 
 The mit addon can be used to both view and add MITs.
 
-_To add mits:_
+__To add mits:__
 
     todo.sh mit [DATE|DAY] [task]
 
@@ -35,7 +35,7 @@ _To add mits:_
 
 A date or day is required along with the task.  Dates must be in the format of YYYY.MM.DD.  Days can be days of the week (Monday, Tuesday, etc.), or abbreviated days of the week (Mon, Tue, etc.).  "Today" or "Tomorrow" are also accepted.
 
-_To view mits:_
+__To view mits:__
 
     todo.sh mit [not @context|@context]
 
@@ -47,7 +47,7 @@ _To view mits:_
 
 Specifying a context to filter by is optional but can be helpful if you define MITs for multiple contexts.  MITs will be grouped by day with any old incomplete MITs listed under "Past Due:".
 
-_To move mits:_
+__To move mits:__
 
     todo.sh mit mv [ID] [DATE|DAY]
 
@@ -57,7 +57,7 @@ _To move mits:_
 
 As with adding mits dates must be in the format of YYYY.MM.DD, day names are accepted, or you can specify "Today" or "Tomorrow".  Thanks to [rcraggs](https://github.com/rcraggs) you can now convert non-mit tasks to mits with the move command as well, the usage is the same.
 
-_To convert mits to normal tasks:_
+__To convert mits to normal tasks:__
 
     todo.sh mit rm [ID]
 
@@ -72,15 +72,15 @@ Format
 
 MITs are stored directly in the todo.txt file with the following format:
 
-    {YYYY.MM.DD} task info @context        # standard mit with set context
-    {YYYY.MM.DD} (A) task info @context    # prioritized mit with set context
-    {YYYY.MM.DD} (A) 2013-05-29 task info  # mit with priority and date added (-t option)
+    {YYYY.MM.DD} task info @context         # standard mit with set context
+    {YYYY.MM.DD} (A) task info @context     # prioritized mit with set context
+    {YYYY.MM.DD} (A) 2013-05-29 task info   # mit with priority and date added (-t option)
 
 
 MITs are displayed as follows:
 
-    Past Due:                             # all past due items displayed here
-      mow the lawn @home (13)             # task numbers displayed on the end
+    Past Due:                               # all past due items displayed here
+      mow the lawn @home (13)               # task numbers displayed on the end
 
     Today:
       change oil in car (23)
@@ -89,5 +89,5 @@ MITs are displayed as follows:
     Wednesday:
       buy groceries @shopping (28)
 
-    Monday, December 17:                  # anything a week out or more gets a date
+    Monday, December 17:                    # anything a week out or more gets a date
       call mother (30)
