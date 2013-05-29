@@ -24,27 +24,46 @@ Usage
 
 The mit addon can be used to both view and add MITs.
 
-To add mits:
+_To add mits:_
 
     todo.sh mit [DATE|DAY] [task]
 
+    $ todo.sh mit tue buy dog food @chores
+    113 {2013.06.04} buy dog food @chores
+    TODO: 113 added.
+    $
+
 A date or day is required along with the task.  Dates must be in the format of YYYY.MM.DD.  Days can be days of the week (Monday, Tuesday, etc.), or abbreviated days of the week (Mon, Tue, etc.).  "Today" or "Tomorrow" are also accepted.
 
-To view mits:
+_To view mits:_
 
     todo.sh mit [not @context|@context]
 
+    $ todo.sh mit @chores
+    Tuesday, June 04:
+      buy dog food @chores (113)
+
+    $
+
 Specifying a context to filter by is optional but can be helpful if you define MITs for multiple contexts.  MITs will be grouped by day with any old incomplete MITs listed under "Past Due:".
 
-To move mits:
+_To move mits:_
 
     todo.sh mit mv [ID] [DATE|DAY]
 
+    $ todo.sh mit mv 113 tomorrow
+    TODO: MIT 'buy dog food @chores' moved to tomorrow.
+    $
+
 As with adding mits dates must be in the format of YYYY.MM.DD, day names are accepted, or you can specify "Today" or "Tomorrow".  Thanks to [rcraggs](https://github.com/rcraggs) you can now convert non-mit tasks to mits with the move command as well, the usage is the same.
 
-To convert mits to normal tasks:
+_To convert mits to normal tasks:_
 
     todo.sh mit rm [ID]
+
+    $ todo.sh mit rm 113
+    Removed MIT from task 113
+    $
 
   Another bit of functionality provided by [rcraggs](https://github.com/rcraggs) that allows you to convert a mit to a normal task.
 
@@ -53,7 +72,10 @@ Format
 
 MITs are stored directly in the todo.txt file with the following format:
 
-    {YYYY.MM.DD} task information @context
+    {YYYY.MM.DD} task info @context        # standard mit with set context
+    {YYYY.MM.DD} (A) task info @context    # prioritized mit with set context
+    {YYYY.MM.DD} (A) 2013-05-29 task info  # mit with priority and date added (-t option)
+
 
 MITs are displayed as follows:
 
@@ -67,5 +89,5 @@ MITs are displayed as follows:
     Wednesday:
       buy groceries @shopping (28)
 
-    Monday, December 17:                  # anyting a week out or more gets a date
+    Monday, December 17:                  # anything a week out or more gets a date
       call mother (30)
