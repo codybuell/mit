@@ -94,3 +94,8 @@ MITs are displayed as follows:
 
     Monday, December 17:                    # anything a week out or more gets a date
       call mother (30)
+
+License
+-------
+
+MIT is open-sourced software licensed under the [MIT license](http://opensource.org/licenses/MIT).
