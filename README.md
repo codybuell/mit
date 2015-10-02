@@ -1,6 +1,9 @@
 MIT (Most Important Task)
 =========================
 
+![Version](https://img.shields.io/badge/version-1.4-green.svg)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](http://opensource.org/licenses/MIT)
+
 Overview
 --------
 
@@ -91,3 +94,8 @@ MITs are displayed as follows:
 
     Monday, December 17:                    # anything a week out or more gets a date
       call mother (30)
+
+License
+-------
+
+MIT is open-sourced software licensed under the [MIT license](http://opensource.org/licenses/MIT).
