@@ -45,6 +45,8 @@
 #            - Fix mv function so that when a task is converted to a mit, the
 #                whole task name is displayed in the results.  Currently it
 #                snips out the first word.
+#            - Create brew formula.
+#            - Rewrite in a speedier language.
 
 ###################
 # Usage Functions #
