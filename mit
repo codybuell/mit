@@ -47,6 +47,11 @@
 #                snips out the first word.
 #            - Create brew formula.
 #            - Rewrite in a speedier language.
+#            - Date tab hinting, dates with weekday names, on mit creation.
+#            - Add 't mit [today,tomorrow,dow]' report output.
+#            - Ability to sort, prioritize and schedule.
+#            - Add 'events' to mit, non completable items that auto remove after date.
+#            - Overview to show exact dates for 0 - 14 days out, then by 'this month' then 'next month +'
 
 ###################
 # Usage Functions #
