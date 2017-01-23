@@ -128,7 +128,9 @@ makeDATE() {
 parseDAY() {
   # create YYYY.MM.DD from upcoming day of week
   if [ $DVER = "BSD" ]; then
-    MITDATE=`date -v +$1 +%Y.%m.%d`
+    # if current dow = mit's dow then put it for 1 week out, needed for bsd date only
+    [[ $1 =~ `date +%a | tr '[:upper:]' '[:lower:]'` ]] && PUSH='-v +7d'
+    MITDATE=`date -v +$1 $PUSH +%Y.%m.%d`
   else
 	  local dayid=$1
 	  if [ $dayid = "1d" ]; then
