@@ -22,6 +22,26 @@ Installation
 3. Place mit in your actions directory.
 4. Ensure mit is executable.
 
+Bash Completion
+---------------
+
+If you would like to add some auto completion to MIT as well as for your todo.sh contexts and projects, add the following to your `~/.bash_rc`.  This assumes you have aliased `todo.sh` to `t`.
+
+    # todo-txt completion
+    _todotxtcli() {
+      local cur=${COMP_WORDS[COMP_CWORD]}
+      local pre=${COMP_WORDS[COMP_CWORD-1]}
+      case $pre in
+        mit )
+          COMPREPLY=( $(compgen -W "today tomorrow monday tuesday wednesday thursday friday saturday sunday january february march april may june july august september october november december" -- $cur) )
+          ;;
+        * )
+          COMPREPLY=( $(compgen -W "mit `eval todo.sh lsprj` `eval todo.sh lsc`" -- $cur) )
+          ;;
+      esac
+    }
+    complete -F _todotxtcli t
+
 Usage
 -----
 

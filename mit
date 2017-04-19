@@ -53,9 +53,38 @@
 #            - Add 'events' to mit, non completable items that auto remove after date.
 #            - Overview to show exact dates for 0 - 14 days out, then by 'this month' then 'next month +'
 
-###################
-# Usage Functions #
-###################
+################################################################################
+################################################################################
+#                                                                              #
+#  ENV DETECTION & VAR PREP                                                    #
+#                                                                              #
+################################################################################
+################################################################################
+
+if date -v 1d > /dev/null 2>&1; then    # detect date version in use
+  DVER="BSD"                            # set as bsd date
+else                                    # if it isn't bsd then...
+  DVER="GNU"                            # set as gnu date
+fi
+
+if sed --version > /dev/null 2>&1; then # detect sed version in use
+  SEDI="sed -i "                        # set as gnu sed syntax
+else                                    # if it isn't gnu then...
+  SEDI="sed -i '' "                     # set as bsd sed syntax
+fi
+
+VERSION="1.4"                           # mit version number
+ACTION=$1                               # set first argument to action
+
+shift                                   # shift arguments, exclude todo.sh
+
+################################################################################
+################################################################################
+#                                                                              #
+#  USAGE & MESSAGES                                                            #
+#                                                                              #
+################################################################################
+################################################################################
 
 usage() {
   cat <<-ENDOFUSAGE
@@ -101,12 +130,25 @@ version() {
   echo "mit version $VERSION"
 }
 
-####################
-# Helper Funcitons #
-####################
+################################################################################
+################################################################################
+#                                                                              #
+#  HELPERS                                                                     #
+#                                                                              #
+################################################################################
+################################################################################
+
+#/
+ # Make Day of Week
+ #
+ # Returns the day of the week of the specified date.
+ #
+ # @param {string} variable to set
+ # @param {string} YYYY.MM.DD formatted date
+ # @return {var} name defined by first param, day of week (i.e. Monday)
+#/
 
 makeDOW() {
-  # format YYYY.MM.DD to day of week (Monday)
   if [ $DVER = "BSD" ]; then
     eval $1=`date -j -f "%Y.%m.%d" $2 +%A`
   else
@@ -115,8 +157,17 @@ makeDOW() {
   fi
 }
 
+#/
+ # Make Date
+ #
+ # Converts a YYYY.MM.DD date to a more friendly format.
+ #
+ # @param {string} variable to set
+ # @param {string} YYYY.MM.DD formatted date
+ # @return {var} name defined by first param, formatted date (i.e. Tuesday, Setpember 19th)
+#/
+
 makeDATE() {
-  # format YYYY.MM.DD to Day, Month DD
   if [ $DVER = "BSD" ]; then
     eval $1=`date -j -f "%Y.%m.%d" $2 "+%A', '%B' '%d"`
   else
@@ -125,8 +176,16 @@ makeDATE() {
   fi
 }
 
+#/
+ # Parse Day
+ #
+ # Returns the date of the next dow passed as an arg.
+ #
+ # @param {string} dow or date diff (i.e. Monday, 1d, etc)
+ # @return {var} MITDATE -> YYYY.MM.DD formatted date
+#/
+
 parseDAY() {
-  # create YYYY.MM.DD from upcoming day of week
   if [ $DVER = "BSD" ]; then
     # if current dow = mit's dow then put it for 1 week out, needed for bsd date only
     [[ $1 =~ `date +%a | tr '[:upper:]' '[:lower:]'` ]] && PUSH='-v +7d'
@@ -140,8 +199,116 @@ parseDAY() {
   fi
 }
 
+#/
+ # Parse Month
+ #
+ # Returns the date of the month passed as an arg.
+ #
+ # @param {string} month (i.e. january, feb, etc)
+ # @return {var} MITDATE -> YYYY.MM.00 formatted date
+#/
+
+parseMONTH() {
+  if [ $DVER = "BSD" ]; then
+    MITDATE=`date -v +$1 +%Y.%m.00`
+  else
+    # get current month, strip padding 0's
+    CURMONTH=`date +%-m`
+    CURYEAR=`date +%Y`
+    case $1 in
+      january|jan )
+        SELMONTH=1
+        ;;
+      february|feb )
+        SELMONTH=2
+        ;;
+      march|mar )
+        SELMONTH=3
+        ;;
+      april|apr )
+        SELMONTH=4
+        ;;
+      may )
+        SELMONTH=5
+        ;;
+      june|jun )
+        SELMONTH=6
+        ;;
+      july|jul )
+        SELMONTH=7
+        ;;
+      august|aug )
+        SELMONTH=8
+        ;;
+      september|sep|sept )
+        SELMONTH=9
+        ;;
+      october|oct )
+        SELMONTH=10
+        ;;
+      november|nov )
+        SELMONTH=11
+        ;;
+      december|dec )
+        SELMONTH=12
+        ;;
+    esac
+
+    # if selected month is already past, pun in next year
+    [[ $SELMONTH -ge $CURMONTH ]] && {
+      SELYEAR=$CURYEAR
+    } || {
+      SELYEAR=$(($CURYEAR+1))
+    }
+
+    # re-pad our selected month
+    SELMONTH=`echo $SELMONTH | sed 's/^[1-9]$/0&/'`
+
+    # set our mitdate
+    MITDATE="$SELYEAR.$SELMONTH.00"
+  fi
+}
+
+#/
+ # Parse Quarter
+ #
+ # Returns the date of the quarter passed as an arg.
+ #
+ # @param {string} quarter (i.e. q1, q2, etc)
+ # @return {var} MITDATE -> YYYY.QN formatted date
+#/
+
+parseQUARTER() {
+  if [ $DVER = "BSD" ]; then
+    MITDATE=`date -v +$1 $PUSH +%Y.%m.%d`
+  else
+	  local dayid=$1
+	  if [ $dayid = "1d" ]; then
+		  dayid="1day"
+	  fi
+    MITDATE=`date -d +$dayid +%Y.%m.%d`
+  fi
+}
+
+################################################################################
+################################################################################
+#                                                                              #
+#  CORE FUNCTIONS                                                              #
+#                                                                              #
+################################################################################
+################################################################################
+
+#/
+ # Get MITs
+ #
+ # Prints out mit's matching specifind date criteria.
+ #
+ # @param {string} bash conditional operator (i.e. -lt|-eq|-gt)
+ # @param {string} date in YYYY.MM.DD format
+ # @return {void}
+#/
+
 getMITS() {
-  # print out mits matching specific date criteria
   for (( i=0; i < ${#MITS[@]}; i++ )); do
     MITDATE=`echo ${MITS[$i]} | awk '{print $1}' | sed 's/\.//g'`
     MITTASK=`echo ${MITS[$i]} | awk '{$1 = ""; print}'`
@@ -151,9 +318,15 @@ getMITS() {
   done
 }
 
-##################
-# Core Functions #
-##################
+#/
+ # Move MIT
+ #
+ # Move mit to another date and print result.
+ #
+ # @param {string} task id
+ # @param {string} date to move to, all parsed options accepted (i.e. tomorrow, mon, YYYY.MM.DD, etc)
+ # @return {void}
+#/
 
 moveMIT() {
   # check that second argument is an id and a valid one
@@ -184,27 +357,37 @@ moveMIT() {
         MITDATE="`date +%Y.%m.%d`"
         $SEDI "$1 s/{[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}}/{$MITDATE}/" "$TODO_FILE"
         echo "TODO: MIT $MITTASK moved to today."
-        exit
         ;;  
       tomorrow )
         parseDAY 1d
         $SEDI "$1 s/{[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}}/{$MITDATE}/" "$TODO_FILE"
         echo "TODO: MIT $MITTASK moved to tomorrow."
-        exit
         ;;  
       monday|mon|tuesday|tue|wednesday|wed|thursday|thu|friday|fri|saturday|sat|sunday|sun )
         parseDAY $2
         makeDOW DOW $MITDATE
         $SEDI "$1 s/{[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}}/{$MITDATE}/" "$TODO_FILE"
         echo "TODO: MIT $MITTASK moved to $DOW."
-        exit
         ;;  
       [0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9] )
         makeDATE DATE $2
         $SEDI "$1 s/{[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}}/{$2}/" "$TODO_FILE"
         echo "TODO: MIT $MITTASK moved to $DATE."
-        exit
         ;;  
+      # parsing misc quarter values
+      q[1-4] )
+  #     parseDAY $MITDATE
+  #     NEWMIT="{$MITDATE} $MITTASK"
+        ;;
+      # parsing misc month values
+      january|jan|february|feb|march|mar|april|apr|may|june|jun|july|august|aug|september|sep|sept|october|oct|november|nov|december|dec )
+  #     parseDAY $MITDATE
+  #     NEWMIT="{$MITDATE} $MITTASK"
+        ;;
+      # parsing a month in YYYY.MM.00 format
+      [0-9][0-9][0-9][0-9].[0-9][0-9].00 )
+  #     NEWMIT="{$MITDATE} $MITTASK"
+        ;;
       * ) 
         error "invalid date"
         exit
@@ -212,91 +395,32 @@ moveMIT() {
     esac
   else
     error "invalid task id"
-    exit
   fi
 }
+
+#/
+ # Remove MIT
+ #
+ # Convert mit to a normal task and print result.
+ #
+ # @param {string} task id
+ # @return {void}
+#/
 
 removeMIT() {
   $SEDI "$1 s/{[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}}[ ]*//" "$TODO_FILE"
   echo "Removed MIT from task $1"
 }
 
-#######################
-# Establish Variables #
-#######################
+#/
+ # Display MITs
+ #
+ # Print out all the mits.
+ #
+ # @return {void}
+#/
 
-if date -v 1d > /dev/null 2>&1; then    # detect date version in use
-  DVER="BSD"                            # set as bsd date
-else                                    # if it isn't bsd then...
-  DVER="GNU"                            # set as gnu date
-fi
-
-if sed --version > /dev/null 2>&1; then # detect sed version in use
-  SEDI="sed -i "                        # set as gnu sed syntax
-else                                    # if it isn't gnu then...
-  SEDI="sed -i '' "                     # set as bsd sed syntax
-fi
-
-VERSION="1.4"                           # mit version number
-ACTION=$1                               # set first argument to action
-
-shift                                   # shift arguments
-
-################
-# Long Options #
-################
-
-# display usage
-[ "$ACTION" = "usage" ] || [ x"$1" = x"--help" ] && {
-  usage
-  exit
-}
-
-# display version
-[ x"$1" = x"--version" ] && {
-  version
-  exit
-}
-
-# move mit
-[ x"$1" = x"mv" ] && {
-  moveMIT $2 $3
-}
-
-# remove mit
-[ x"$1" = x"rm" ] && {
-  removeMIT $2
-  exit
-}
-
-#################
-# Short Options #
-#################
-
-while getopts ":hv" Option; do
-  case $Option in
-    h ) 
-      usage
-      exit
-      ;;  
-    v ) 
-      version
-      exit
-      ;;  
-    : ) 
-      echo "Option -$OPTARG requires an argument." >&2
-      exit
-      ;;
-  esac
-done
-
-##########
-# Run It #
-##########
-
-# DISPLAY MITS
-
-[ -z $1 ] || [[ $1 =~ @.* ]] || [ "$1" = "not" ] && {
+displayMITs() {
 
   # define array element separator as newlines
   OLDIFS=$IFS
@@ -376,29 +500,65 @@ done
 
 }
 
-# ADD NEW MITS
+#/
+ # Create MIT
+ #
+ # Creat a new MIT record and print result.
+ #
+ # @param {string} mit date, all parsed options accepted (i.e. tomorrow, mon, YYYY.MM.DD, etc)
+ # @param {string}.*$ task to create
+ # @return {void}
+#/
 
-[ -n "$1" ] && {
+createMIT() {
 
+  # grab the passed date and lowecase it
   MITDATE=`echo $1 | tr [A-Z] [a-z]`
+
+  # grab the rest of the argumets as the task
   shift
   MITTASK=$@
+
+  # get todays date
   TODAY=`date +%u`
 
+  # parse the passed date and format the task to be added
+  # {YYYY.MM.DD} task to be added --> standard mit
+  # {YYYY.MM.00} task to be added --> montly mit
+  # {YYYY.00.00} task to be added --> yearly mit
+  # {YYYY.QN} task to be added    --> quarterly mit
   case $MITDATE in
+    # parsing 'today'
     today )
       NEWMIT="{`date +%Y.%m.%d`} $MITTASK"
       ;;
+    # parsing 'tomorrow'
     tomorrow )
       parseDAY 1d
       NEWMIT="{$MITDATE} $MITTASK"
       ;;
+    # parsing a misc dow values
     monday|mon|tuesday|tue|wednesday|wed|thursday|thu|friday|fri|saturday|sat|sunday|sun )
       parseDAY $MITDATE
       NEWMIT="{$MITDATE} $MITTASK"
       ;;
+    # parsing a full date in YYYY.MM.DD format, a month in YYYY.MM.00 format, or a year in YYYY.00.00 format
     [0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9] )
       NEWMIT="{$MITDATE} $MITTASK"
+      ;;
+    # parsing misc quarter values
+    q[1-4] )
+      parseQUARTER $MITDATE
+      NEWMIT="{$MITDATE} $MITTASK"
+      ;;
+    # parsing misc month values
+    january|jan|february|feb|march|mar|april|apr|may|june|jun|july|august|aug|september|sep|sept|october|oct|november|nov|december|dec )
+      parseMONTH $MITDATE
+      NEWMIT="{$MITDATE} $MITTASK"
+      ;;
+    # parsing a year in YYYY format
+    [0-9][0-9][0-9][0-9] )
+      NEWMIT="{$MITDATE.00.00} $MITTASK"
       ;;
     * )
       error "invalid date"
@@ -410,4 +570,79 @@ done
 
   exit
 
+}
+
+################################################################################
+################################################################################
+#                                                                              #
+#  LONG OPTIONS                                                                #
+#                                                                              #
+################################################################################
+################################################################################
+
+# display usage
+[ "$ACTION" = "usage" ] || [ x"$1" = x"--help" ] && {
+  usage
+  exit
+}
+
+# display version
+[ x"$1" = x"--version" ] && {
+  version
+  exit
+}
+
+# move mit
+[ x"$1" = x"mv" ] && {
+  moveMIT $2 $3
+  exit
+}
+
+# remove mit
+[ x"$1" = x"rm" ] && {
+  removeMIT $2
+  exit
+}
+
+################################################################################
+################################################################################
+#                                                                              #
+#  SHORT OPTIONS                                                               #
+#                                                                              #
+################################################################################
+################################################################################
+
+while getopts ":hv" Option; do
+  case $Option in
+    h ) 
+      usage
+      exit
+      ;;  
+    v ) 
+      version
+      exit
+      ;;  
+    : ) 
+      echo "Option -$OPTARG requires an argument." >&2
+      exit
+      ;;
+  esac
+done
+
+################################################################################
+################################################################################
+#                                                                              #
+#  RUN IT                                                                      #
+#                                                                              #
+################################################################################
+################################################################################
+
+# if no arguments, or a context / not context passed print mits
+[ -z $1 ] || [[ $1 =~ @.* ]] || [ "$1" = "not" ] && {
+  displayMITs $@
+}
+
+# check if arg is not null and not picked up by an option, create mit
+[ -n "$1" ] && {
+  createMIT $@
 }
