@@ -316,6 +316,7 @@ parseQUARTER() {
       ;;
   esac
 
+  CURYEAR=`date +%Y`
   SELQUARTER=`echo $1 | sed 's/[^[:digit:]]//'`
 
   [[ $SELQUARTER -ge $CURQUARTER ]] && {
@@ -342,17 +343,53 @@ parseQUARTER() {
  #
  # @param {string} bash conditional operator (i.e. -lt|-eq|-gt)
  # @param {string} date in YYYY.MM.DD format
+ # @param {string} mit array to query (years,quarters,months,days)
  # @return {void}
 #/
 
 getMITS() {
-  for (( i=0; i < ${#MITS[@]}; i++ )); do
-    MITDATE=`echo ${MITS[$i]} | awk '{print $1}' | sed 's/\.//g'`
-    MITTASK=`echo ${MITS[$i]} | awk '{$1 = ""; print}'`
-    if [ "$MITDATE" $1 "$2" ]; then
-      echo " $MITTASK"
-    fi
-  done
+
+  OPERATOR=$1
+  DATE=$2
+  ARRAY=$3
+  case $ARRAY in
+    years )
+      for (( i=0; i < ${#MITTASKSYEAR[@]}; i++ )); do
+        MITDATE=`echo ${MITTASKSYEAR[$i]} | awk '{print $1}' | sed 's/\.//g'`
+        MITTASK=`echo ${MITTASKSYEAR[$i]} | awk '{$1 = ""; print}'`
+        if [ "$MITDATE" $OPERATOR "$DATE" ]; then
+          echo " $MITTASK"
+        fi
+      done
+      ;;
+    quarters )
+      for (( i=0; i < ${#MITTASKSQUARTER[@]}; i++ )); do
+        MITDATE=`echo ${MITTASKSQUARTER[$i]} | awk '{print $1}' | sed 's/\.//g'`
+        MITTASK=`echo ${MITTASKSQUARTER[$i]} | awk '{$1 = ""; print}'`
+        if [ "$MITDATE" $OPERATOR "$DATE" ]; then
+          echo " $MITTASK"
+        fi
+      done
+      ;;
+    months )
+      for (( i=0; i < ${#MITTASKSMONTH[@]}; i++ )); do
+        MITDATE=`echo ${MITTASKSMONTH[$i]} | awk '{print $1}' | sed 's/\.//g'`
+        MITTASK=`echo ${MITTASKSMONTH[$i]} | awk '{$1 = ""; print}'`
+        if [ "$MITDATE" $OPERATOR "$DATE" ]; then
+          echo " $MITTASK"
+        fi
+      done
+      ;;
+    days )
+      for (( i=0; i < ${#MITTASKSDAY[@]}; i++ )); do
+        MITDATE=`echo ${MITTASKSDAY[$i]} | awk '{print $1}' | sed 's/\.//g'`
+        MITTASK=`echo ${MITTASKSDAY[$i]} | awk '{$1 = ""; print}'`
+        if [ "$MITDATE" $OPERATOR "$DATE" ]; then
+          echo " $MITTASK"
+        fi
+      done
+      ;;
+  esac
 }
 
 #/
@@ -529,10 +566,42 @@ displayMITs() {
     esac
   done
 
+  # define array element separator as newlines
+  OLDIFS=$IFS
+  IFS=$'\n'
+
+  # separate out month, quarter, and year tasks
+  MITTASKSDAY=()
+  MITTASKSMONTH=()
+  MITTASKSQUARTER=()
+  MITTASKSYEAR=()
+  for (( i=0; i < ${#MITS[@]}; i++ )); do
+    MITDATE=`echo ${MITS[$i]} | awk '{print $1}'`
+    MITTASK=`echo ${MITS[$i]} | awk '{$1 = ""; print}'`
+    # order is important here
+    case $MITDATE in
+      [0-9][0-9][0-9][0-9].00.00 )
+        MITTASKSYEAR+=(${MITS[$i]})
+        ;;
+      [0-9][0-9][0-9][0-9].[0-9][0-9].00 )
+        MITTASKSMONTH+=(${MITS[$i]})
+        ;;
+      [0-9][0-9][0-9][0-9].[qQ][0-9].00 )
+        MITTASKSQUARTER+=(${MITS[$i]})
+        ;;
+      * )
+        MITTASKSDAY+=(${MITS[$i]})
+        ;;
+    esac
+  done
+
+  # return array element separator to spaces
+  IFS=$OLDIFS
+
   # get todays date for comparisons later
   TODAY=`date +%Y%m%d`
-  THISYEAR=`date +%Y1300`
-  THISMONTH=`date +%Y%m40`
+  THISYEAR=`date +%Y0000`
+  THISMONTH=`date +%Y%m00`
   case `date +%-m` in
     [1-3] )
       THISQUARTER=`date +%Y0101`
@@ -579,13 +648,13 @@ displayMITs() {
       # find mit's due this year
       if [ "$YEAR" -eq "$THISYEAR" ]; then
         echo "This Year:"
-        getMITS -eq $YEAR
+        getMITS -eq $YEAR years
         echo ""
 
       # everything else
-      else
-        echo "$YEAR:"
-        getMITS -eq $YEAR
+      elif [ "$YEAR" -gt "$THISYEAR" ]; then
+        echo "$YEAR:" | sed 's/0000//'
+        getMITS -eq $YEAR years
         echo ""
       fi
 
@@ -608,7 +677,7 @@ displayMITs() {
       # if we find just one past due mit print them all and break out
       if [ "$DAY" -lt "$THISQUARTER" ]; then
         echo "Past Due:"
-        getMITS -lt $THISQUARTER
+        getMITS -lt $THISQUARTER quarters
         echo ""
         break
       fi
@@ -618,18 +687,18 @@ displayMITs() {
     for quarter in ${MITQUARTERS[@]}; do
 
       # get the date and strip out .'s YYYY0000
-      YEAR=`echo $year | sed 's/\.//g'`
+      QUARTER=`echo $year | sed 's/\.//g'`
 
-      # find mit's due this year
-      if [ "$YEAR" -eq "$THISYEAR" ]; then
-        echo "This Year:"
-        getMITS -eq $YEAR
+      # find mit's due this quarter
+      if [ "$QUARTER" -eq "$THISQUARTER" ]; then
+        echo "This Quarter:"
+        getMITS -eq $QUARTER quarters
         echo ""
 
       # everything else
       else
-        echo "$YEAR:"
-        getMITS -eq $YEAR
+        echo "$QUARTER:"
+        getMITS -eq $QUARTER quarters
         echo ""
       fi
 
@@ -652,7 +721,7 @@ displayMITs() {
       # if we find just one past due mit print them all and break out
       if [ "$MONTH" -lt "$THISMONTH" ]; then
         echo "Past Due:"
-        getMITS -lt $THISMONTH
+        getMITS -lt $THISMONTH months
         echo ""
         break
       fi
@@ -667,14 +736,14 @@ displayMITs() {
       # find mit's due this month
       if [ "$MONTH" -eq "$THISMONTH" ]; then
         echo "This Month:"
-        getMITS -eq $MONTH
+        getMITS -eq $MONTH months
         echo ""
 
       # everything else
-      else
+      elif [ "$MONTH" -gt "$THISMONTH" ]; then
         makeMONTH PPMONTH $MONTH
         echo "$PPMONTH:"
-        getMITS -eq $MONTH
+        getMITS -eq $MONTH months
         echo ""
       fi
 
@@ -697,7 +766,7 @@ displayMITs() {
       # if we find just one past due mit print them all and break out
       if [ "$DAY" -lt "$TODAY" ]; then
         echo "Past Due:"
-        getMITS -lt $TODAY
+        getMITS -lt $TODAY days
         echo ""
         break
       fi
@@ -715,21 +784,21 @@ displayMITs() {
       # find mit's due today
       if [ "$DAY" -eq "$TODAY" ]; then
         echo "Today:"
-        getMITS -eq $DAY
+        getMITS -eq $DAY days
         echo ""
 
       # anything in the next 7 days
       elif [ "$DAYSTO" -gt "0" ] && [ "$DAYSTO" -lt "7" ]; then
         makeDOW DOW $day
         echo "$DOW:"
-        getMITS -eq $DAY
+        getMITS -eq $DAY days
         echo ""
 
       # everything else
       elif [ "$DAYSTO" -ge "7" ]; then
         makeDATE DATE $day
         echo "$DATE:"
-        getMITS -eq $DAY
+        getMITS -eq $DAY days
         echo ""
       fi
 
