@@ -85,7 +85,8 @@ A date or day is required along with the task.  The DATE|DAY format is as follow
       YYYYMM                                i.e. 208001
       YYYY.MM                               i.e. 2080.01
 
-    ** assumes current or upcoming
+    ** Assumes current week|or year, if chosen day|date has already
+       passed then it will roll to the next upcoming day|date.
 
 __To view mits:__
 
