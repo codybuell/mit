@@ -177,6 +177,26 @@ makeDATE() {
 }
 
 #/
+ # Make Month
+ #
+ # Converts a YYYYMM00 date to a more friendly format.
+ #
+ # @param {string} variable to set
+ # @param {string} YYYYMM00 formatted date
+ # @return {var} name defined by first param, formatted date (i.e. March 2100)
+#/
+
+makeMONTH() {
+  # change the last 0 in second param to 1 else date freaks out
+  RAWTIME=`echo $2 | sed 's/0$/1/'`
+  if [ $DVER = "BSD" ]; then
+    eval $1=`date -j -f "%Y%m%d" $RAWTIME "+%B' '%Y"`
+  else
+    eval $1=`date -d $RAWTIME "+%B' '%Y"`
+  fi
+}
+
+#/
  # Parse Day
  #
  # Returns the date of the next dow passed as an arg.
@@ -293,7 +313,7 @@ parseQUARTER() {
       ;;
     [10-12] )
       CURQUARTER=4
-      ;; 
+      ;;
   esac
 
   SELQUARTER=`echo $1 | sed 's/[^[:digit:]]//'`
@@ -372,44 +392,46 @@ moveMIT() {
     case $2 in
       today )
         MITDATE="`date +%Y.%m.%d`"
-        $SEDI "$1 s/{[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}}/{$MITDATE}/" "$TODO_FILE"
-        echo "TODO: MIT $MITTASK moved to today."
+        MOVEDTO="today"
         ;;  
       tomorrow )
         parseDAY 1d
-        $SEDI "$1 s/{[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}}/{$MITDATE}/" "$TODO_FILE"
-        echo "TODO: MIT $MITTASK moved to tomorrow."
+        MOVEDTO="tomorrow"
         ;;  
       monday|mon|tuesday|tue|wednesday|wed|thursday|thu|friday|fri|saturday|sat|sunday|sun )
         parseDAY $2
         makeDOW DOW $MITDATE
-        $SEDI "$1 s/{[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}}/{$MITDATE}/" "$TODO_FILE"
-        echo "TODO: MIT $MITTASK moved to $DOW."
+        MOVEDTO=$DOW
         ;;  
       [0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9] )
         makeDATE DATE $2
-        $SEDI "$1 s/{[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}}/{$2}/" "$TODO_FILE"
-        echo "TODO: MIT $MITTASK moved to $DATE."
+        MOVEDTO=$DATE
         ;;  
       # parsing misc quarter values
       q[1-4] )
-  #     parseDAY $MITDATE
-  #     NEWMIT="{$MITDATE} $MITTASK"
+        parseQUARTER $2
+        MOVEDTO=${2^}
+        echo "TODO: MIT $MITTASK moved to ${2^}."
         ;;
       # parsing misc month values
       january|jan|february|feb|march|mar|april|apr|may|june|jun|july|august|aug|september|sep|sept|october|oct|november|nov|december|dec )
-  #     parseDAY $MITDATE
-  #     NEWMIT="{$MITDATE} $MITTASK"
+        parseMONTH $2
+        MOVEDTO=${2^}
         ;;
-      # parsing a month in YYYY.MM.00 format
-      [0-9][0-9][0-9][0-9].[0-9][0-9].00 )
-  #     NEWMIT="{$MITDATE} $MITTASK"
+      # parsing a year in YYYY format
+      [0-9][0-9][0-9][0-9] )
+        MITDATE="${MITDATE}.00.00"
+        MOVEDTO=$2
         ;;
       * ) 
         error "invalid date"
         exit
         ;;  
     esac
+    
+    # run the sed and echo out the status
+    $SEDI "$1 s/{[0-9]\{4\}\.[qQ0-9][0-9]\.[0-9]\{2\}}/{$MITDATE}/" "$TODO_FILE"
+    echo "TODO: MIT $MITTASK moved to $MOVEDTO."
   else
     error "invalid task id"
   fi
@@ -452,67 +474,268 @@ displayMITs() {
   fi
 
   # pull out MITs from the todo file, clean and sort
-  # grepping for "X {YYYY.MM.DD}", "{YYYY.MM.DD}", "X YYYY-MM-DD {YYYY.MM.DD}" or "YYYY-MM-DD {YYYY.MM.DD}"
-  NUM='[0-9].* '
-  PRI='([A-Z]\{1\}) '
-  ADD='[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\} '
-  MDD='{[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}}'
+  # grepping for "X {YYYY.[qQ]MM.DD}", "{YYYY.[qQ]MM.DD}", "X YYYY-MM-DD {YYYY.[qQ]MM.DD}" or "YYYY-MM-DD {YYYY.[qQ]MM.DD}"
+  NUM='[0-9].* '                                    # number
+  PRI='([A-Z]\{1\}) '                               # priority
+  ADD='[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\} '           # assigned due date
+  MDD='{[0-9]\{4\}\.[qQ0-9][0-9]\.[0-9]\{2\}}'      # mit due date
   # creat an array with values like YYYY.MM.DD [priority] [task info] [task number]
-  MITS=(`grep -n "^$PRI$MDD\|^$MDD\|^$PRI$ADD$MDD\|^$ADD$MDD" "$TODO_FILE" | grep $FLAG "$1" | sed "s/:/ /;s/\(^$NUM\)\($PRI\)\($ADD\)\(.*$\)/\1\2\4/;s/\(^$NUM\)\($ADD\)\(.*$\)/\1\3/;s/\(^$NUM\)\($PRI\)\($MDD \)\(.*\)/\1\3\2\4/;s/{//;s/}//" | awk '{s=$1;e=$NF;$1="";$NF=e" ("s")"}1' | sort`)
+  MITS=(`grep -n "^$PRI$MDD\|^$MDD\|^$PRI$ADD$MDD\|^$ADD$MDD" "$TODO_FILE" | \
+         grep $FLAG "$1" | \
+         sed -e "s/:/ /;" \
+             -e "s/\(^$NUM\)\($PRI\)\($ADD\)\(.*$\)/\1\2\4/" \
+             -e "s/\(^$NUM\)\($ADD\)\(.*$\)/\1\3/" \
+             -e "s/\(^$NUM\)\($PRI\)\($MDD \)\(.*\)/\1\3\2\4/" \
+             -e "s/{//;s/}//" | \
+         awk '{s=$1;e=$NF;$1="";$NF=e" ("s")"}1' | \
+         sort`)
 
   # return array element separator to spaces
   IFS=$OLDIFS
 
-  # make an array of ordered unique MIT dates
-  DATES=(`grep "^$PRI$MDD\|^$MDD\|^$PRI$ADD$MDD\|^$ADD$MDD" "$TODO_FILE" | grep $FLAG "$1" | sed 's/^.*{\([0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}\).*$/\1/' | sort | uniq`)
-  #DATES=(`grep "^$PRI$MDD\|^$MDD\|^$PRI$ADD$MDD\|^$ADD$MDD" "$TODO_FILE" | grep $FLAG "$1" | sed -e 's/{//' -e 's/}//' -e 's/([A-Z]\{1\})//' | awk '{print $1}' | sort | uniq`)
-  TODAY=`date +%Y%m%d`
+  # make an array of ordered unique MIT dates YYYY.MM.DD
+  DATES=(`grep "^$PRI$MDD\|^$MDD\|^$PRI$ADD$MDD\|^$ADD$MDD" "$TODO_FILE" | \
+          grep $FLAG "$1" | \
+          sed 's/^.*{\([0-9]\{4\}\.[qQ0-9][0-9]\.[0-9]\{2\}\).*$/\1/' | \
+          sort | \
+          uniq`)
 
-  # processing if there are no mits
+  # bail if there are no mits
   if [ "${#DATES[@]}" -eq "0" ]; then
     echo "No MITs found."
     exit
   fi
 
-  # processing of past due mits
-  PASTDUE="false"
+  # separate out month, quarter, and year formatted dates
+  MITDAYS=()
+  MITMONTHS=()
+  MITQUARTERS=()
+  MITYEARS=()
   for day in ${DATES[@]}; do
-    DAY=`echo $day | sed 's/\.//g'`
-    if [ "$DAY" -lt "$TODAY" ]; then
-      PASTDUE="true"
-    fi
+    # order is important here
+    case $day in
+      [0-9][0-9][0-9][0-9].00.00 )
+        MITYEARS+=($day)
+        ;;
+      [0-9][0-9][0-9][0-9].[0-9][0-9].00 )
+        MITMONTHS+=($day)
+        ;;
+      [0-9][0-9][0-9][0-9].[qQ][0-9].00 )
+        MITQUARTERS+=($day)
+        ;;
+      * )
+        MITDAYS+=($day)
+        ;;
+    esac
   done
-  if [ "$PASTDUE" = "true" ]; then
-    echo "Past Due:"
-    getMITS -lt $TODAY
+
+  # get todays date for comparisons later
+  TODAY=`date +%Y%m%d`
+  THISYEAR=`date +%Y1300`
+  THISMONTH=`date +%Y%m40`
+  case `date +%-m` in
+    [1-3] )
+      THISQUARTER=`date +%Y0101`
+      ;;
+    [4-6] )
+      THISQUARTER=`date +%Y0401`
+      ;;
+    [7-9] )
+      THISQUARTER=`date +%Y0701`
+      ;;
+    [10-12] )
+      THISQUARTER=`date +%Y1001`
+      ;;
+  esac
+
+  # run yearly mit's only if there are some
+  if [ "${#MITYEARS[@]}" -gt "0" ]; then
+    echo "--------------------------------------------------------------------------------"
+    echo ".                                                                              ."
+    echo ".                                 Yearly MIT's                                 ."
+    echo ".                                                                              ."
+    echo "--------------------------------------------------------------------------------"
     echo ""
+
+    # check for past due yearly mit's
+    for year in ${MITYEARS[@]}; do
+      # strip out the .'s between YYYY.00.00
+      YEAR=`echo $year | sed 's/\.//g'`
+      # if we find just one past due mit print them all and break out
+      if [ "$YEAR" -lt "$THISYEAR" ]; then
+        echo "Past Due:"
+        getMITS -lt $THISYEAR
+        echo ""
+        break
+      fi
+    done
+
+    # processing of all other yearly mits
+    for year in ${MITYEARS[@]}; do
+
+      # get the date and strip out .'s YYYY0000
+      YEAR=`echo $year | sed 's/\.//g'`
+
+      # find mit's due this year
+      if [ "$YEAR" -eq "$THISYEAR" ]; then
+        echo "This Year:"
+        getMITS -eq $YEAR
+        echo ""
+
+      # everything else
+      else
+        echo "$YEAR:"
+        getMITS -eq $YEAR
+        echo ""
+      fi
+
+    done
   fi
 
-  # processing of all other mits
-  for day in ${DATES[@]}; do
+  # run quarterly mit's only if there are some
+  if [ "${#MITQUARTERS[@]}" -gt "0" ]; then
+    echo "--------------------------------------------------------------------------------"
+    echo ".                                                                              ."
+    echo ".                               Quarterly MIT's                                ."
+    echo ".                                                                              ."
+    echo "--------------------------------------------------------------------------------"
+    echo ""
 
-    DAY=`echo $day | sed 's/\.//g'`
-    DAYSTO=$(( $DAY - $TODAY ))
+    # check for past due quarterly mit's
+    for quarter in ${MITQUARTERS[@]}; do
+      # strip out the .'s between YYYY.QN.00
+      DAY=`echo $quarter | sed 's/\.//g'`
+      # if we find just one past due mit print them all and break out
+      if [ "$DAY" -lt "$THISQUARTER" ]; then
+        echo "Past Due:"
+        getMITS -lt $THISQUARTER
+        echo ""
+        break
+      fi
+    done
 
-    if [ "$DAY" -eq "$TODAY" ]; then
-      echo "Today:"
-      getMITS -eq $DAY
-      echo ""
+    # processing of all other quarterly mits
+    for quarter in ${MITQUARTERS[@]}; do
 
-    elif [ "$DAYSTO" -gt "0" ] && [ "$DAYSTO" -lt "7" ]; then
-      makeDOW DOW $day
-      echo "$DOW:"
-      getMITS -eq $DAY
-      echo ""
+      # get the date and strip out .'s YYYY0000
+      YEAR=`echo $year | sed 's/\.//g'`
 
-    elif [ "$DAYSTO" -ge "7" ]; then
-      makeDATE DATE $day
-      echo "$DATE:"
-      getMITS -eq $DAY
-      echo ""
-    fi
+      # find mit's due this year
+      if [ "$YEAR" -eq "$THISYEAR" ]; then
+        echo "This Year:"
+        getMITS -eq $YEAR
+        echo ""
 
-  done
+      # everything else
+      else
+        echo "$YEAR:"
+        getMITS -eq $YEAR
+        echo ""
+      fi
+
+    done
+  fi
+
+  # run monthly mit's only if there are some
+  if [ "${#MITMONTHS[@]}" -gt "0" ]; then
+    echo "--------------------------------------------------------------------------------"
+    echo ".                                                                              ."
+    echo ".                                Monthly MIT's                                 ."
+    echo ".                                                                              ."
+    echo "--------------------------------------------------------------------------------"
+    echo ""
+
+    # check for past due monthly mit's
+    for month in ${MITMONTHS[@]}; do
+      # strip out the .'s between YYYY.MM.00
+      MONTH=`echo $month | sed 's/\.//g'`
+      # if we find just one past due mit print them all and break out
+      if [ "$MONTH" -lt "$THISMONTH" ]; then
+        echo "Past Due:"
+        getMITS -lt $THISMONTH
+        echo ""
+        break
+      fi
+    done
+
+    # processing of all other monthly mits
+    for month in ${MITMONTHS[@]}; do
+
+      # get the date and strip out .'s YYYYMM00
+      MONTH=`echo $month | sed 's/\.//g'`
+
+      # find mit's due this month
+      if [ "$MONTH" -eq "$THISMONTH" ]; then
+        echo "This Month:"
+        getMITS -eq $MONTH
+        echo ""
+
+      # everything else
+      else
+        makeMONTH PPMONTH $MONTH
+        echo "$PPMONTH:"
+        getMITS -eq $MONTH
+        echo ""
+      fi
+
+    done
+  fi
+
+  # run daily mit's only if there are some
+  if [ "${#MITDAYS[@]}" -gt "0" ]; then
+    echo "--------------------------------------------------------------------------------"
+    echo ".                                                                              ."
+    echo ".                                 Daily MIT's                                  ."
+    echo ".                                                                              ."
+    echo "--------------------------------------------------------------------------------"
+    echo ""
+
+    # check for past due daily mit's
+    for day in ${MITDAYS[@]}; do
+      # strip out the .'s between YYYY.MM.DD
+      DAY=`echo $day | sed 's/\.//g'`
+      # if we find just one past due mit print them all and break out
+      if [ "$DAY" -lt "$TODAY" ]; then
+        echo "Past Due:"
+        getMITS -lt $TODAY
+        echo ""
+        break
+      fi
+    done
+
+    # processing of all other daily mits
+    for day in ${MITDAYS[@]}; do
+
+      # get the date and strip out .'s YYYYMMDD
+      DAY=`echo $day | sed 's/\.//g'`
+
+      # how many days out is the mit
+      DAYSTO=$(( $DAY - $TODAY ))
+
+      # find mit's due today
+      if [ "$DAY" -eq "$TODAY" ]; then
+        echo "Today:"
+        getMITS -eq $DAY
+        echo ""
+
+      # anything in the next 7 days
+      elif [ "$DAYSTO" -gt "0" ] && [ "$DAYSTO" -lt "7" ]; then
+        makeDOW DOW $day
+        echo "$DOW:"
+        getMITS -eq $DAY
+        echo ""
+
+      # everything else
+      elif [ "$DAYSTO" -ge "7" ]; then
+        makeDATE DATE $day
+        echo "$DATE:"
+        getMITS -eq $DAY
+        echo ""
+      fi
+
+    done
+  fi
+
   exit
 
 }
