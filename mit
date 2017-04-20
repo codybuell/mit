@@ -34,6 +34,7 @@
 #            2013.03.10 Added support for dated tasks per Justin Le's request.
 #                       Incremented version number from 1.2 to 1.3.
 #            2015.06.29 Support for GNU Sed 4.2.2.
+#            2017.04.20 Added yearly, quarterly and montly mit's
 #
 # Requisite: todo.sh by Gina Trapanni
 #
@@ -73,7 +74,7 @@ else                                    # if it isn't gnu then...
   SEDI="sed -i '' "                     # set as bsd sed syntax
 fi
 
-VERSION="1.4"                           # mit version number
+VERSION="2.0"                           # mit version number
 ACTION=$1                               # set first argument to action
 
 shift                                   # shift arguments, exclude todo.sh
@@ -90,6 +91,7 @@ usage() {
   cat <<-ENDOFUSAGE
 
 	  Most Important Tasks (MIT):
+
 	    Displays from or adds Most Important Tasks (MIT) to todo.txt file.
 
 	    $(basename $0) [-h|--help] [-v|--version] [date|day task] [rm ID]
@@ -98,24 +100,55 @@ usage() {
 	    -h, --help      Displays help message.
 	    -v, --version   Displays version information.
 
-	    mit DATE|DAY task
-	      DATE must be in the format of YYYY.MM.DD.
-	      DAY can be full or short day names, today or tomorrow.
+	    Accepted DATE|DAY formats:
 
-	    mit rm ID
-	      Convert the MIT identified by ID to a standard task.
+	      for daily mit's
+	      ---------------
+	        'today'
+	        'tomorrow'
+	        day of the week or abbreviation**     i.e. monday|mon
+	        YYYY.MM.DD                            i.e. 2080.01.15
+	      
+	      for yearly mit's
+	      ----------------
+	        YYYY                                  i.e. 2080
+          YYYY.00.00                            i.e. 2080.00.00
 
-	    mit not @context|@context
-	      Displays all MIT's not in or in specified context.
+	      for quarterly mit's
+	      -------------------
+	        QN **                                 i.e. q1 | q4
+	        YYYYQN                                i.e. 2080q4
+	        YYYY.QN                               i.e. 2080.Q1
 
-	    mit mv ID DATE|DAY
-	      Move the MIT identified by ID to a new day.
-	      DATE must be in the format of YYYY.MM.DD.
-	      DAY can be full or short day names, today or tomorrow.
+	      for monthly mit's
+	      -----------------
+	        month name ore abbreviation**         i.e. january|jan
+	        YYYY.MM.00                            i.e. 2080.01.00
+	        YYYYMM                                i.e. 208001
+	        YYYY.MM                               i.e. 2080.01
 
-	    mit wed upload code to github
-	      Creates a new MIT for next Wednesday unless the current day
-	      is Wednesday in which case it will be created for today.
+	      ** assumes current or upcoming
+
+	    Examples:
+
+	      mit DATE|DAY task
+	        DATE must be in the format of YYYY.MM.DD.
+	        DAY can be full or short day names, today or tomorrow.
+
+        mit rm ID
+          Convert the MIT identified by ID to a standard task.
+
+        mit not @context|@context
+          Displays all MIT's not in or in specified context.
+
+        mit mv ID DATE|DAY
+          Move the MIT identified by ID to a new day.
+          DATE must be in the format of YYYY.MM.DD.
+          DAY can be full or short day names, today or tomorrow.
+
+        mit wed upload code to github
+          Creates a new MIT for next Wednesday unless the current day
+          is Wednesday in which case it will be created for today.
 
 	ENDOFUSAGE
   exit
@@ -895,7 +928,7 @@ createMIT() {
       NEWMIT="{$MITDATE} $MITTASK"
       ;;
     # parsing a full date in YYYY.MM.DD format, a month in YYYY.MM.00 format, or a year in YYYY.00.00 format
-    [0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9] )
+    [0-9][0-9][0-9][0-9].[0-1][0-9].[0-3][0-9] )
       NEWMIT="{$MITDATE} $MITTASK"
       ;;
     # parsing misc quarter values
@@ -919,6 +952,15 @@ createMIT() {
     # parsing a quarter in YYYYQN format
     [0-9][0-9][0-9][0-9][qQ][1-4] )
       MITDATE=`echo $MITDATE | sed 's/^[0-9][0-9][0-9][0-9]/&./;s/q/Q/'`
+      NEWMIT="{$MITDATE.00} $MITTASK"
+      ;;
+    # parsing a month in YYYY.MM format
+    [0-9][0-9][0-9][0-9].[0-1][1-4] )
+      NEWMIT="{$MITDATE.00} $MITTASK"
+      ;;
+    # parsing a month in YYYYMM format
+    [0-9][0-9][0-9][0-9][0-1][1-4] )
+      MITDATE=`echo $MITDATE | sed 's/^[0-9][0-9][0-9][0-9]/&./'`
       NEWMIT="{$MITDATE.00} $MITTASK"
       ;;
     * )

@@ -1,7 +1,7 @@
 MIT (Most Important Task)
 =========================
 
-![Version](https://img.shields.io/badge/version-1.4-green.svg)
+![Version](https://img.shields.io/badge/version-2.0-green.svg)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](http://opensource.org/licenses/MIT)
 
 Overview
@@ -13,6 +13,8 @@ MIT adds functionality to Gina Trapani's [todo.txt-cli](https://github.com/ginat
 
 * [zenhabits](http://zenhabits.net/purpose-your-day-most-important-task/)
 * [lifehacker](http://lifehacker.com/software/top/geek-to-live--control-your-workday-187074.php)
+
+The MIT plugin also supports assigning tasks to a year, quarter or month.
 
 Installation
 ------------
@@ -56,7 +58,32 @@ __To add mits:__
     TODO: 113 added.
     $
 
-A date or day is required along with the task.  Dates must be in the format of YYYY.MM.DD.  Days can be days of the week (Monday, Tuesday, etc.), or abbreviated days of the week (Mon, Tue, etc.).  "Today" or "Tomorrow" are also accepted.
+A date or day is required along with the task.  The DATE|DAY format is as follows:
+
+    for daily mit's
+    ---------------
+      'today'
+      'tomorrow'
+      day of the week or abbreviation**     i.e. monday|mon
+      YYYY.MM.DD                            i.e. 2080.01.15
+    
+    for yearly mit's
+    ----------------
+      YYYY                                  i.e. 2080
+      YYYY.00.00                            i.e. 2080.00.00
+
+    for quarterly mit's
+    -------------------
+      QN **                                 i.e. q1 | q4
+      YYYYQN                                i.e. 2080q4
+      YYYY.QN                               i.e. 2080.Q1
+
+    for monthly mit's
+    -----------------
+      month name ore abbreviation**         i.e. january|jan
+      YYYY.MM.00                            i.e. 2080.01.00
+      YYYYMM                                i.e. 208001
+      YYYY.MM                               i.e. 2080.01
 
 __To view mits:__
 
@@ -96,11 +123,20 @@ Format
 MITs are stored directly in the todo.txt file with the following format:
 
     {YYYY.MM.DD} task info @context         # standard mit with set context
+    {YYYY.QN.DD} task info                  # a quarterly mit
+    {YYYY.00.00} task info                  # a yearly mit
+    {YYYY.MM.00} task info                  # a monthly mit
     {YYYY.MM.DD} (A) task info @context     # prioritized mit with set context
     {YYYY.MM.DD} (A) 2013-05-29 task info   # mit with priority and date added (-t option)
 
 
 MITs are displayed as follows:
+
+    --------------------------------------------------------------------------------
+    .                                                                              .
+    .                                 Daily MIT's                                  .
+    .                                                                              .
+    --------------------------------------------------------------------------------
 
     Past Due:                               # all past due items displayed here
       mow the lawn @home (13)               # task numbers displayed on the end
