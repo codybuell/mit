@@ -365,6 +365,20 @@ getMITS() {
     quarters )
       for (( i=0; i < ${#MITTASKSQUARTER[@]}; i++ )); do
         MITDATE=`echo ${MITTASKSQUARTER[$i]} | awk '{print $1}' | sed 's/\.//g'`
+        case `echo $MITDATE | sed 's/.*[qQ]\([1-4]\).*/\1/'` in
+          1 )
+            MITDATE=`echo $MITDATE | sed 's/[qQ][1-4]00/0101/'`
+            ;;
+          2 )
+            MITDATE=`echo $MITDATE | sed 's/[qQ][1-4]00/0401/'`
+            ;;
+          3 )
+            MITDATE=`echo $MITDATE | sed 's/[qQ][1-4]00/0701/'`
+            ;;
+          4 )
+            MITDATE=`echo $MITDATE | sed 's/[qQ][1-4]00/1001/'`
+            ;;
+        esac
         MITTASK=`echo ${MITTASKSQUARTER[$i]} | awk '{$1 = ""; print}'`
         if [ "$MITDATE" $OPERATOR "$DATE" ]; then
           echo " $MITTASK"
@@ -672,10 +686,24 @@ displayMITs() {
 
     # check for past due quarterly mit's
     for quarter in ${MITQUARTERS[@]}; do
-      # strip out the .'s between YYYY.QN.00
-      DAY=`echo $quarter | sed 's/\.//g'`
+      # determine the quarter number 1-4
+      QN=`echo $quarter | sed 's/.*[qQ]\([1-4]\).*/\1/'`
+      case $QN in
+        1 )
+          QUARTER=`echo $quarter | sed 's/[qQ][1-4]\.00/0101/;s/\.//g'`
+          ;;
+        2 )
+          QUARTER=`echo $quarter | sed 's/[qQ][1-4]\.00/0401/;s/\.//g'`
+          ;;
+        3 )
+          QUARTER=`echo $quarter | sed 's/[qQ][1-4]\.00/0701/;s/\.//g'`
+          ;;
+        4 )
+          QUARTER=`echo $quarter | sed 's/[qQ][1-4]\.00/1001/;s/\.//g'`
+          ;;
+      esac
       # if we find just one past due mit print them all and break out
-      if [ "$DAY" -lt "$THISQUARTER" ]; then
+      if [ "$QUARTER" -lt "$THISQUARTER" ]; then
         echo "Past Due:"
         getMITS -lt $THISQUARTER quarters
         echo ""
@@ -686,8 +714,23 @@ displayMITs() {
     # processing of all other quarterly mits
     for quarter in ${MITQUARTERS[@]}; do
 
-      # get the date and strip out .'s YYYY0000
-      QUARTER=`echo $year | sed 's/\.//g'`
+      # determine the quarter number 1-4
+      QN=`echo $quarter | sed 's/.*[qQ]\([1-4]\).*/\1/'`
+      YR=`echo $quarter | sed 's/\([0-9]\{4\}\).*$/\1/'`
+      case $QN in
+        1 )
+          QUARTER=`echo $quarter | sed 's/[qQ][1-4]\.00/0101/;s/\.//g'`
+          ;;
+        2 )
+          QUARTER=`echo $quarter | sed 's/[qQ][1-4]\.00/0401/;s/\.//g'`
+          ;;
+        3 )
+          QUARTER=`echo $quarter | sed 's/[qQ][1-4]\.00/0701/;s/\.//g'`
+          ;;
+        4 )
+          QUARTER=`echo $quarter | sed 's/[qQ][1-4]\.00/1001/;s/\.//g'`
+          ;;
+      esac
 
       # find mit's due this quarter
       if [ "$QUARTER" -eq "$THISQUARTER" ]; then
@@ -696,8 +739,8 @@ displayMITs() {
         echo ""
 
       # everything else
-      else
-        echo "$QUARTER:"
+      elif [ "$QUARTER" -gt "$THISQUARTER" ]; then
+        echo "Q$QN $YR:"
         getMITS -eq $QUARTER quarters
         echo ""
       fi
@@ -868,6 +911,15 @@ createMIT() {
     # parsing a year in YYYY format
     [0-9][0-9][0-9][0-9] )
       NEWMIT="{$MITDATE.00.00} $MITTASK"
+      ;;
+    # parsing a quarter in YYYY.QN format
+    [0-9][0-9][0-9][0-9].[qQ][1-4] )
+      NEWMIT="{${MITDATE^^}.00} $MITTASK"
+      ;;
+    # parsing a quarter in YYYYQN format
+    [0-9][0-9][0-9][0-9][qQ][1-4] )
+      MITDATE=`echo $MITDATE | sed 's/^[0-9][0-9][0-9][0-9]/&./;s/q/Q/'`
+      NEWMIT="{$MITDATE.00} $MITTASK"
       ;;
     * )
       error "invalid date"
