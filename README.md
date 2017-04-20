@@ -85,6 +85,8 @@ A date or day is required along with the task.  The DATE|DAY format is as follow
       YYYYMM                                i.e. 208001
       YYYY.MM                               i.e. 2080.01
 
+    ** assumes current or upcoming
+
 __To view mits:__
 
     todo.sh mit [not @context|@context]
