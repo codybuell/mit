@@ -71,7 +71,7 @@ fi
 if sed --version > /dev/null 2>&1; then # detect sed version in use
   SEDI="sed -i "                        # set as gnu sed syntax
 else                                    # if it isn't gnu then...
-  SEDI="sed -i '' "                     # set as bsd sed syntax
+  SEDI="sed -i sedbak "                     # set as bsd sed syntax
 fi
 
 VERSION="2.0"                           # mit version number
