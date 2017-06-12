@@ -139,6 +139,10 @@ usage() {
 	        DATE must be in the format of YYYY.MM.DD.
 	        DAY can be full or short day names, today or tomorrow.
 
+	      mit DATE|DAY
+	        DATE must be in the format of YYYY.MM.DD.
+	        DAY can be full or short day names, today or tomorrow.
+
         mit rm ID
           Convert the MIT identified by ID to a standard task.
 
@@ -539,14 +543,14 @@ removeMIT() {
 }
 
 #/
- # Display MITs
+ # Process MITs
  #
- # Print out all the mits.
+ # Process all the MITs in preparation for printing to screen.
  #
  # @return {void}
 #/
 
-displayMITs() {
+processMITs() {
 
   # define array element separator as newlines
   OLDIFS=$IFS
@@ -666,6 +670,18 @@ displayMITs() {
       THISQUARTER=`date +%Y1001`
       ;;
   esac
+
+}
+
+#/
+ # Display MITs
+ #
+ # Print out all the mits.
+ #
+ # @return {void}
+#/
+
+displayMITs() {
 
   # run yearly mit's only if there are some
   if [ "${#MITYEARS[@]}" -gt "0" ]; then
@@ -910,53 +926,57 @@ createMIT() {
   case $MITDATE in
     # parsing 'today'
     today )
-      NEWMIT="{`date +%Y.%m.%d`} $MITTASK"
+      TYPE=days
+      MITDATE=`date +%Y.%m.%d`
       ;;
     # parsing 'tomorrow'
     tomorrow )
+      TYPE=days
       parseDAY 1d
-      NEWMIT="{$MITDATE} $MITTASK"
       ;;
     # parsing a misc dow values
     monday|mon|tuesday|tue|wednesday|wed|thursday|thu|friday|fri|saturday|sat|sunday|sun )
+      TYPE=days
       parseDAY $MITDATE
-      NEWMIT="{$MITDATE} $MITTASK"
       ;;
     # parsing a full date in YYYY.MM.DD format, a month in YYYY.MM.00 format, or a year in YYYY.00.00 format
     [0-9][0-9][0-9][0-9].[0-1][0-9].[0-3][0-9] )
-      NEWMIT="{$MITDATE} $MITTASK"
+      TYPE=days
       ;;
     # parsing misc quarter values
     q[1-4] )
+      TYPE=quarters
       parseQUARTER $MITDATE
-      NEWMIT="{$MITDATE} $MITTASK"
       ;;
     # parsing misc month values
     january|jan|february|feb|march|mar|april|apr|may|june|jun|july|august|aug|september|sep|sept|october|oct|november|nov|december|dec )
+      TYPE=months
       parseMONTH $MITDATE
-      NEWMIT="{$MITDATE} $MITTASK"
       ;;
     # parsing a year in YYYY format
     [0-9][0-9][0-9][0-9] )
-      NEWMIT="{$MITDATE.00.00} $MITTASK"
+      TYPE=years
+      MITDATE="${MITDATE}.00.00"
       ;;
     # parsing a quarter in YYYY.QN format
     [0-9][0-9][0-9][0-9].[qQ][1-4] )
-      NEWMIT="{${MITDATE^^}.00} $MITTASK"
+      TYPE=quarters
+      MITDATE="${MITDATE^^}.00"
       ;;
     # parsing a quarter in YYYYQN format
     [0-9][0-9][0-9][0-9][qQ][1-4] )
-      MITDATE=`echo $MITDATE | sed 's/^[0-9][0-9][0-9][0-9]/&./;s/q/Q/'`
-      NEWMIT="{$MITDATE.00} $MITTASK"
+      TYPE=quarters
+      MITDATE="`echo $MITDATE | sed 's/^[0-9][0-9][0-9][0-9]/&./;s/q/Q/'`.00"
       ;;
     # parsing a month in YYYY.MM format
     [0-9][0-9][0-9][0-9].[0-1][1-4] )
-      NEWMIT="{$MITDATE.00} $MITTASK"
+      TYPE=months
+      MITDATE="${MITDATE}.00"
       ;;
     # parsing a month in YYYYMM format
     [0-9][0-9][0-9][0-9][0-1][1-4] )
-      MITDATE=`echo $MITDATE | sed 's/^[0-9][0-9][0-9][0-9]/&./'`
-      NEWMIT="{$MITDATE.00} $MITTASK"
+      TYPE=months
+      MITDATE="`echo $MITDATE | sed 's/^[0-9][0-9][0-9][0-9]/&./'`.00"
       ;;
     * )
       error "invalid date"
@@ -964,7 +984,15 @@ createMIT() {
       ;;
   esac
 
-  "$TODO_FULL_SH" add $NEWMIT
+
+  if [[ $MITTASK == "" || $MITTASK =~ ^@ ]]; then
+    QUICKDATE=`echo $MITDATE | sed 's/\.//g'`
+    processMITs $MITTASK
+    getMITS -eq $QUICKDATE $TYPE
+  else
+    NEWMIT="{$MITDATE} $MITTASK"
+    "$TODO_FULL_SH" add $NEWMIT
+  fi
 
   exit
 
@@ -1037,7 +1065,8 @@ done
 
 # if no arguments, or a context / not context passed print mits
 [ -z $1 ] || [[ $1 =~ @.* ]] || [ "$1" = "not" ] && {
-  displayMITs $@
+  processMITs $@
+  displayMITs
 }
 
 # check if arg is not null and not picked up by an option, create mit

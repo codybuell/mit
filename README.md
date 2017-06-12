@@ -95,15 +95,19 @@ A date or day is required along with the task.  The DATE|DAY format is as follow
 
 __To view mits:__
 
-    todo.sh mit [not @context|@context]
+    todo.sh mit [DAY|DATE] [not @context|@context]
 
     $ todo.sh mit @chores
     Tuesday, June 04:
       buy dog food @chores (113)
 
-    $
+Specifying a context to filter by is optional but can be helpful if you define MITs for multiple contexts.  MITs will be grouped by day with any old incomplete MITs listed under "Past Due:".  You can also specify a day or date to narrow the returned MITs.  All day/date formats listed above are supported.
 
-Specifying a context to filter by is optional but can be helpful if you define MITs for multiple contexts.  MITs will be grouped by day with any old incomplete MITs listed under "Past Due:".
+    $ todo.sh mit today
+      watch some videos on youtube (1)
+
+    $ todo.sh mit wed @work
+      finish tps report @work
 
 __To move mits:__
 
