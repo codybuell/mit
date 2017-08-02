@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env bash -x
 #
 # MIT
 #
@@ -497,6 +497,7 @@ moveMIT() {
         ;;  
       [0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9] )
         makeDATE DATE $2
+        MITDATE=$2
         MOVEDTO=$DATE
         ;;  
       # parsing misc quarter values
