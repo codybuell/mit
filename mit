@@ -985,11 +985,13 @@ createMIT() {
       ;;
   esac
 
-
+  # if no task is provided or ?? then show mit's for the requested date, else create mit
   if [[ $MITTASK == "" || $MITTASK =~ ^@ ]]; then
     QUICKDATE=`echo $MITDATE | sed 's/\.//g'`
     processMITs $MITTASK
+    echo ""
     getMITS -eq $QUICKDATE $TYPE
+    echo ""
   else
     NEWMIT="{$MITDATE} $MITTASK"
     "$TODO_FULL_SH" add $NEWMIT
