@@ -71,7 +71,7 @@ A date or day is required along with the task.  The DATE|DAY format is as follow
       'tomorrow'
       day of the week or abbreviation**     i.e. monday|mon
       YYYY.MM.DD                            i.e. 2080.01.15
-    
+
     for yearly mit's
     ----------------
       YYYY                                  i.e. 2080
@@ -85,7 +85,7 @@ A date or day is required along with the task.  The DATE|DAY format is as follow
 
     for monthly mit's
     -----------------
-      month name ore abbreviation**         i.e. january|jan
+      month name or abbreviation**          i.e. january|jan
       YYYY.MM.00                            i.e. 2080.01.00
       YYYYMM                                i.e. 208001
       YYYY.MM                               i.e. 2080.01
